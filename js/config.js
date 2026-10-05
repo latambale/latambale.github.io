@@ -8,9 +8,10 @@ BK.brand = {
 };
 
 /* Backend URL.
- * Leave DEFAULT_API_BASE empty to let the app ask for it once (saved in this browser),
- * or hardcode your Apps Script /exec URL here after deploying. */
-BK.DEFAULT_API_BASE = '';
+ * Hardcoded to the deployed Apps Script /exec endpoint. The webapp AND the Android TWA
+ * (which loads this same webapp) both use this. A value saved in the browser's localStorage
+ * via Settings still overrides it. */
+BK.DEFAULT_API_BASE = 'https://script.google.com/macros/s/AKfycbwoxtmPoJZ-V7xG4gmZiNPfFZxZpSJzq55YyGjkSrXJ4jYJ5WjR_b2lRVQJWPct4XbL/exec';
 
 BK.apiBase = function () {
   try { return localStorage.getItem('bk_api') || BK.DEFAULT_API_BASE || ''; }
