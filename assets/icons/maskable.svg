@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="BuildKhata">
+  <rect width="512" height="512" fill="#0B0B0C"/>
+  <!-- extra padding for Android maskable safe-zone -->
+  <rect x="156" y="176" width="200" height="40" rx="10" fill="#5B8DEF"/>
+  <rect x="156" y="240" width="156" height="40" rx="10" fill="#FFFFFF"/>
+  <rect x="156" y="304" width="112" height="40" rx="10" fill="#FFFFFF" opacity="0.72"/>
+</svg>
