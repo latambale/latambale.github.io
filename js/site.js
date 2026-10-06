@@ -57,8 +57,8 @@
   /* ---------------- interactive "try it" demo (local heuristic preview) ---------------- */
   var input = document.getElementById('tryInput');
   var tryBtn = document.getElementById('tryBtn');
-  var result = document.getElementById('tryResult');
   var samples = document.getElementById('trySamples');
+  var wf = document.getElementById('workflow');
 
   function money(n) { try { return '₹' + Math.round(n).toLocaleString('en-IN'); } catch (e) { return '₹' + Math.round(n); } }
   function esc(s) { return String(s == null ? '' : s).replace(/[&<>"]/g, function (c) { return ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]; }); }
@@ -123,34 +123,55 @@
     return { type: type, category: category, sub: sub, vendor: vendor, amount: amount, dateLabel: dateLabel };
   }
 
-  function renderParsed(p) {
-    if (!p) return;
-    var out = p.type === 'EXPENSE';
-    var title = p.vendor || p.sub || p.category;
-    var chips = [];
-    chips.push('<span class="chip ' + (out ? 'exp' : '') + '">' + (out ? 'Expense' : 'Income') + '</span>');
-    if (p.sub) chips.push('<span class="chip">' + esc(p.sub) + '</span>');
-    else chips.push('<span class="chip">' + esc(p.category) + '</span>');
-    if (p.vendor) chips.push('<span class="chip">' + esc(p.vendor) + '</span>');
-    chips.push('<span class="chip">' + esc(p.dateLabel) + '</span>');
-    if (p.amount > 0) chips.push('<span class="chip amt">' + money(p.amount) + '</span>');
-    result.innerHTML =
-      '<div class="pcard"><div class="prow"><div><div class="pt">' + esc(title) + '</div>' +
-      '<div class="psub">' + esc(p.category) + (p.amount > 0 ? '' : ' &middot; add an amount to log') + '</div></div>' +
-      (p.amount > 0 ? '<div class="pamt ' + (out ? 'out' : 'in') + '">' + (out ? '− ' : '+ ') + money(p.amount) + '</div>' : '') +
-      '</div><div class="pchips">' + chips.join('') + '</div></div>';
+  // fill every .wave with animated bars
+  Array.prototype.forEach.call(document.querySelectorAll('.wave'), function (w) {
+    if (w.children.length) return;
+    for (var i = 0; i < 34; i++) { var b = document.createElement('i'); b.style.animationDelay = (Math.random() * 1.1).toFixed(2) + 's'; b.style.animationDuration = (0.8 + Math.random() * 0.8).toFixed(2) + 's'; w.appendChild(b); }
+  });
+
+  var todayOut = 0, todayIn = 0, flowTimers = [];
+  function setStep(n, on) { var s = wf && wf.querySelector('.wf-step[data-s="' + n + '"]'); if (s) s.classList.toggle('on', !!on); }
+  function clearFlow() { flowTimers.forEach(clearTimeout); flowTimers = [];[1, 2, 3, 4].forEach(function (n) { setStep(n, false); }); }
+  function after(ms, fn) { flowTimers.push(setTimeout(fn, ms)); }
+  function animateCount(el, from, to) {
+    if (!el) return; var start = Date.now(), dur = 700;
+    (function tick() { var k = Math.min(1, (Date.now() - start) / dur); var v = Math.round(from + (to - from) * (1 - Math.pow(1 - k, 3))); el.textContent = money(v); if (k < 1) requestAnimationFrame(tick); })();
+  }
+  function runFlow() {
+    var p = demoParse(input.value); if (!p) { input.focus(); return; }
+    clearFlow();
+    var said = document.getElementById('wfSaid'), entry = document.getElementById('wfEntry');
+    var out = p.type === 'EXPENSE', title = p.vendor || p.sub || p.category;
+    setStep(1, true); if (said) said.textContent = '"' + input.value.trim() + '"';
+    after(650, function () { setStep(2, true); });
+    after(1500, function () {
+      setStep(3, true);
+      if (entry) {
+        entry.className = '';
+        entry.innerHTML = '<div class="wf-entry"><div><div class="we-t">' + esc(title) + '</div><div class="we-s">' +
+          esc((out ? 'Expense' : 'Income') + (p.sub ? ' · ' + p.sub : '') + ' · ' + p.dateLabel) + '</div></div>' +
+          (p.amount > 0 ? '<div class="we-a ' + (out ? 'out' : 'in') + '">' + (out ? '− ' : '+ ') + money(p.amount) + '</div>' : '<div class="we-s">add an amount</div>') + '</div>';
+      }
+    });
+    after(2350, function () {
+      setStep(4, true);
+      if (p.amount > 0 && p.dateLabel === 'Today') {
+        if (out) { animateCount(document.getElementById('wfOut'), todayOut, todayOut + p.amount); todayOut += p.amount; }
+        else { animateCount(document.getElementById('wfIn'), todayIn, todayIn + p.amount); todayIn += p.amount; }
+      }
+    });
   }
 
-  function run() { var p = demoParse(input.value); if (!p) { input.focus(); return; } renderParsed(p); }
-
-  if (input && tryBtn && result) {
-    tryBtn.addEventListener('click', run);
-    input.addEventListener('keydown', function (e) { if (e.key === 'Enter') run(); });
+  if (input && tryBtn && wf) {
+    tryBtn.addEventListener('click', runFlow);
+    input.addEventListener('keydown', function (e) { if (e.key === 'Enter') runFlow(); });
     if (samples) samples.addEventListener('click', function (e) {
       var b = e.target.closest('.sample'); if (!b) return;
-      input.value = b.textContent; run(); input.scrollIntoView({ block: 'nearest' });
+      input.value = b.textContent; runFlow(); wf.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
     });
-    // seed with the first sample so the section never looks empty
-    input.value = 'Paid 45 thousand to Sharma Steel today'; run();
+    input.value = 'Paid 45 thousand to Sharma Steel today';
+    // auto-play once when the workflow scrolls into view
+    var tObs = new IntersectionObserver(function (es) { es.forEach(function (e) { if (e.isIntersecting) { runFlow(); tObs.disconnect(); } }); }, { threshold: 0.3 });
+    tObs.observe(wf);
   }
 })();

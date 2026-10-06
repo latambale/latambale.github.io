@@ -87,6 +87,39 @@
   </div>
 </section>
 
+<!-- SHOWCASE BAND -->
+<section class="showcase">
+  <div class="wrap">
+    <div class="show-grid">
+      <article class="show-card show-dark reveal">
+        <div class="show-text">
+          <span class="show-tag"><span data-ic="mic"></span> Voice first</span>
+          <h3>One sentence. Fully sorted.</h3>
+          <p>Say what you paid or received. BuildKhata pulls out the amount, vendor, category and date, and files it under the right project. No forms, no fiddling.</p>
+        </div>
+        <div class="show-demo">
+          <div class="show-said">"Paid 45 thousand to Sharma Steel today"</div>
+          <div class="chip-row">
+            <span class="chip exp">Expense</span><span class="chip">Steel</span><span class="chip">Sharma Steel</span><span class="chip amt">&#8377;45,000</span>
+          </div>
+        </div>
+      </article>
+      <article class="show-card reveal" data-d="1">
+        <span class="show-tag light"><span data-ic="trendUp"></span> Instant</span>
+        <h3>Logged in seconds</h3>
+        <p>No end-of-day data entry. It is in your ledger before you reach the next floor.</p>
+        <div class="wave static" id="showWave"></div>
+      </article>
+      <article class="show-card reveal" data-d="2">
+        <span class="show-tag light"><span data-ic="agent"></span> Any language</span>
+        <h3>Speaks your language</h3>
+        <p>English, Hindi, Marathi, Gujarati and more, even mixed Hinglish.</p>
+        <div class="lang-chips"><span>English</span><span>&#2361;&#2367;&#2306;&#2342;&#2368;</span><span>&#2350;&#2352;&#2366;&#2336;&#2368;</span><span>&#2711;&#2753;&#2716;&#2736;&#2750;&#2724;&#2752;</span><span>&#2980;&#2990;&#3007;&#2996;&#3021;</span><span>&#2476;&#2494;&#2434;&#2482;&#2494;</span></div>
+      </article>
+    </div>
+  </div>
+</section>
+
 <!-- FEATURES -->
 <section class="features" id="features">
   <div class="wrap">
@@ -122,18 +155,18 @@
   </div>
 </section>
 
-<!-- TRY IT (interactive) -->
+<!-- TRY IT (interactive workflow) -->
 <section class="tryit" id="try">
   <div class="wrap">
     <div class="sec-head reveal">
       <div class="kicker">Try it now</div>
-      <h2>Type a sentence, watch it become an entry</h2>
-      <p>No sign-up needed. Type what you paid or received and see how BuildKhata reads it.</p>
+      <h2>See what happens after you speak</h2>
+      <p>No sign-up. Type a sentence (or pick one) and watch BuildKhata hear it, understand it, log it, and update your dashboard.</p>
     </div>
     <div class="try-card reveal" data-d="1">
       <div class="try-in">
         <input id="tryInput" type="text" placeholder="e.g. Paid 45 thousand to Sharma Steel today" aria-label="Try a sentence"/>
-        <button class="btn btn-accent" id="tryBtn"><span data-ic="sparkle"></span> See it</button>
+        <button class="btn btn-accent" id="tryBtn"><span data-ic="play"></span> See it work</button>
       </div>
       <div class="try-samples" id="trySamples">
         <button class="sample">Paid 45 thousand to Sharma Steel today</button>
@@ -141,8 +174,111 @@
         <button class="sample">Gave 18k salary to the watchman</button>
         <button class="sample">Spent 1.2 lakh on cement</button>
       </div>
-      <div class="try-result" id="tryResult"></div>
-      <p class="try-note">This is a quick in-browser preview. The real app uses GPT for far smarter understanding, corrects misheard names, and supports many entries in one sentence.</p>
+
+      <div class="workflow" id="workflow">
+        <div class="wf-step" data-s="1">
+          <div class="wf-ic" data-ic="mic"></div>
+          <div class="wf-body">
+            <div class="wf-t">You speak</div>
+            <div class="wf-said" id="wfSaid">Tap a sample above, or type your own</div>
+            <div class="wave" id="wfWave"></div>
+          </div>
+        </div>
+        <div class="wf-arrow" data-ic="chevronDown"></div>
+        <div class="wf-step" data-s="2">
+          <div class="wf-ic" data-ic="agent"></div>
+          <div class="wf-body">
+            <div class="wf-t">GPT understands</div>
+            <div class="wf-sub">Pulls out amount, vendor, category and date, in any language</div>
+          </div>
+        </div>
+        <div class="wf-arrow" data-ic="chevronDown"></div>
+        <div class="wf-step" data-s="3">
+          <div class="wf-ic" data-ic="check"></div>
+          <div class="wf-body">
+            <div class="wf-t">Entry logged</div>
+            <div id="wfEntry" class="wf-entry-empty">Your categorised entry appears here</div>
+          </div>
+        </div>
+        <div class="wf-arrow" data-ic="chevronDown"></div>
+        <div class="wf-step" data-s="4">
+          <div class="wf-ic" data-ic="trendUp"></div>
+          <div class="wf-body">
+            <div class="wf-t">Dashboard updates</div>
+            <div class="wf-stats">
+              <div class="wf-stat"><span>Today, money out</span><b id="wfOut">&#8377;0</b></div>
+              <div class="wf-stat"><span>Today, money in</span><b id="wfIn">&#8377;0</b></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <p class="try-note">A quick in-browser preview. The real app uses GPT for sharper understanding, fixes misheard names, handles many entries in one sentence, and works by voice.</p>
+    </div>
+  </div>
+</section>
+
+<!-- POWERED BY GPT (dark band) -->
+<section class="gptband">
+  <div class="wrap">
+    <div class="gpt-card reveal">
+      <div class="gpt-logo"><span data-ic="agent"></span></div>
+      <div class="gpt-content">
+        <div class="gpt-kicker">Powered by GPT</div>
+        <h2>Speak it. It is logged.</h2>
+        <div class="gpt-rows">
+          <div class="gpt-row"><div class="gpt-ic" data-ic="mic"></div><div><b>Understands plain speech</b><p>Say it the way you would tell your site engineer. GPT turns it into a clean entry in about a second, no buttons, no copy-paste.</p></div></div>
+          <div class="gpt-row"><div class="gpt-ic" data-ic="cube"></div><div><b>Knows your trade</b><p>Steel, cement, tiles, labour, salaries, bookings, challans. It picks the right category and fixes misheard vendor names.</p></div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- WORKS ON BROWSER / PHONE -->
+<section>
+  <div class="wrap">
+    <div class="sec-head reveal">
+      <div class="kicker">Anywhere you work</div>
+      <h2>Same app, web and phone</h2>
+      <p>Start on the laptop in the office, finish on your phone at the site.</p>
+    </div>
+    <div class="devices">
+      <article class="dev-card reveal">
+        <div class="dev-text">
+          <h3>Works right in your browser</h3>
+          <p>Open BuildKhata on any computer. Nothing to install, and your data stays in your own Google Sheet.</p>
+          <a class="btn btn-dark" href="app.html">Open in browser</a>
+        </div>
+        <div class="dev-visual">
+          <div class="laptop">
+            <div class="laptop-screen">
+              <div class="mini-top"><span class="mini-brand"><img src="assets/icons/icon.svg" alt=""/> BuildKhata</span><span class="mini-chip rec"><i></i> Listening</span></div>
+              <div class="mini-said">"Paid 45 thousand to Sharma Steel"</div>
+              <div class="mini-chips"><span class="chip exp">Expense</span><span class="chip">Steel</span><span class="chip amt">&#8377;45,000</span></div>
+            </div>
+            <div class="laptop-base"></div>
+          </div>
+        </div>
+      </article>
+      <article class="dev-card reveal" data-d="1">
+        <div class="dev-text">
+          <h3>Works on your phone</h3>
+          <p>Install the Android app and log entries by voice from the site, with one thumb.</p>
+          <a class="btn btn-dark" href="app.html">Get the app</a>
+        </div>
+        <div class="dev-visual">
+          <div class="phone">
+            <div class="phone-notch"></div>
+            <div class="phone-screen">
+              <div class="mini-top"><span class="mini-brand"><img src="assets/icons/icon.svg" alt=""/> BuildKhata</span><span class="mini-chip rec"><i></i></span></div>
+              <div class="mini-said">"Received 5 lakh booking, 2BHK"</div>
+              <div class="mini-chips"><span class="chip">Income</span><span class="chip">2BHK</span><span class="chip amt">&#8377;5,00,000</span></div>
+              <div class="phone-mic" data-ic="mic"></div>
+            </div>
+          </div>
+        </div>
+      </article>
     </div>
   </div>
 </section>
@@ -221,7 +357,17 @@
         <a class="btn btn-ghost" href="#contact">Contact us</a>
       </div>
     </div>
-    <p class="center muted" style="margin-top:22px;font-size:13.5px">Prototype pricing, indicative only. Payments secured by Razorpay. See our <a href="refund.html">Refund policy</a>.</p>
+    <div class="pay-strip reveal">
+      <span class="pay-label">Pay securely with</span>
+      <span class="pay-badge pb-visa">VISA</span>
+      <span class="pay-badge pb-mc"><i></i><i></i></span>
+      <span class="pay-badge pb-amex">AMEX</span>
+      <span class="pay-badge pb-upi">UPI</span>
+      <span class="pay-badge pb-gpay">G&nbsp;Pay</span>
+      <span class="pay-badge pb-ppe">PhonePe</span>
+      <span class="pay-badge pb-rzp">Razorpay</span>
+    </div>
+    <p class="center muted" style="margin-top:16px;font-size:13.5px">Prototype pricing, indicative only. Payments secured by Razorpay. See our <a href="refund.html">Refund policy</a>.</p>
   </div>
 </section>
 
