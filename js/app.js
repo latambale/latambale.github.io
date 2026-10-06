@@ -264,12 +264,22 @@
   // Global utterance handler (from the hold-to-talk mic OR the chatbot text box).
   function handleUtterance(text){
     text=(text||'').trim();
-    if(!text){toast('Did not catch that. Try again.');return;}
+    if(!text){hideVoiceOverlay();toast('Did not catch that. Try again.');return;}
     chatBot.push('user',text);
-    if(S.features.ai===false){manualConfirm(text);return;}
+    if(S.features.ai===false){hideVoiceOverlay();manualConfirm(text);return;}
     chatBot.thinking(true);
-    api('interpret',{text:text,projectId:S.projectId}).then(function(d){chatBot.thinking(false);dispatchIntent(d.result,text);})
-      .catch(function(e){chatBot.thinking(false);if(e.code==='AI_DISABLED'){manualConfirm(text);}else{toast(errMsg(e),'err');chatBot.push('bot',errMsg(e));}});
+    api('interpretBatch',{text:text,projectId:S.projectId}).then(function(d){
+      chatBot.thinking(false);hideVoiceOverlay();
+      var items=d.items||[];
+      if(!items.length){toast('I could not find an action in that.','err');chatBot.push('bot','I could not find an action. Try rephrasing, or use manual entry.');return;}
+      if(items.length===1){dispatchIntent(items[0],text);}
+      else{showBatchReview(items);}
+    }).catch(function(e){chatBot.thinking(false);hideVoiceOverlay();
+      if(e.code==='AI_DISABLED'){manualConfirm(text);return;}
+      if(e.code==='UNKNOWN_ACTION'){ // backend not re-deployed yet: fall back to single interpret
+        return api('interpret',{text:text,projectId:S.projectId}).then(function(d){dispatchIntent(d.result,text);}).catch(function(e2){toast(errMsg(e2),'err');chatBot.push('bot',errMsg(e2));});
+      }
+      toast(errMsg(e),'err');chatBot.push('bot',errMsg(e));});
   }
   function dispatchIntent(r,rawText){
     var d=r.data||{};
@@ -290,10 +300,67 @@
     manualConfirm(rawText);
   }
   function manualConfirm(text){showTxConfirm({type:'EXPENSE',category:'VENDOR',subCategory:'',vendorName:'',amount:0,date:todayStr(),note:text||''},text||'',false,1);}
+
+  // ---- multiple entries in one utterance: review all, approve all ----
+  function itemSummary(it){
+    var d=it.data||{};
+    if(it.intent==='ADD_TRANSACTION'){var out=d.type!=='INCOME';return{icon:CI[d.category]||'box',title:d.vendorName||d.subCategory||((CAT[d.category]||{}).label)||'Entry',sub:(out?'Expense':'Income')+(d.subCategory?' · '+d.subCategory:''),amt:(out?'-':'+')+money(d.amount),cls:out?'out':'in'};}
+    if(it.intent==='ADD_REMINDER'){return{icon:'bell',title:d.title||'Reminder',sub:'Reminder · '+fmtDate(d.dueDate||todayStr())+' '+(d.time||''),amt:Number(d.amount)>0?money(d.amount):'',cls:''};}
+    if(it.intent==='SET_LAND_COST'){return{icon:'land',title:'Set land cost',sub:curProject().name||'',amt:money(d.amount),cls:''};}
+    if(it.intent==='ADD_PROJECT'){return{icon:'building',title:'New project: '+(d.name||''),sub:'Project',amt:'',cls:''};}
+    if(it.intent==='ADD_VENDOR'){return{icon:'cube',title:d.name||'Vendor',sub:'Vendor'+(d.vendorType?' · '+d.vendorType:''),amt:'',cls:''};}
+    if(it.intent==='ADD_VENDOR_TYPE'||it.intent==='ADD_SALARY_ROLE'||it.intent==='ADD_UNIT_TYPE'){var k={ADD_VENDOR_TYPE:'VENDOR_TYPE',ADD_SALARY_ROLE:'SALARY_ROLE',ADD_UNIT_TYPE:'INVENTORY_TYPE'}[it.intent];return{icon:'plus',title:'Add '+kindLabel(k)+': '+(d.name||''),sub:'Category',amt:'',cls:''};}
+    return{icon:'box',title:it.intent,sub:'',amt:'',cls:''};
+  }
+  function executeItem(it){
+    var d=it.data||{};
+    switch(it.intent){
+      case 'ADD_TRANSACTION':
+        if(!(Number(d.amount)>0))return Promise.reject(new Error('no amount'));
+        return api('createTransaction',{projectId:S.projectId,type:d.type,category:d.category,subCategory:d.subCategory||'',vendorName:d.vendorName||'',amount:Number(d.amount)||0,rate:Number(d.rate)||0,quantity:Number(d.quantity)||0,unit:d.unit||'',date:d.date||todayStr(),note:d.note||'',source:'voice',rawText:''});
+      case 'ADD_REMINDER':
+        return api('createReminder',{projectId:S.projectId,title:d.title,dueDate:d.dueDate,time:d.time,remindBefore:d.remindBefore,recurrence:d.recurrence,amount:Number(d.amount)||0,notify:true});
+      case 'SET_LAND_COST':
+        return api('updateProject',{id:S.projectId,landCost:Number(d.amount)||0}).then(function(res){S.projects=S.projects.map(function(x){return x.id===res.project.id?res.project:x;});});
+      case 'ADD_PROJECT':
+        return api('createProject',{name:d.name,landCost:Number(d.landCost)||0}).then(function(res){S.projects.push(res.project);});
+      case 'ADD_VENDOR':
+        return api('createVendor',{projectId:S.projectId,name:d.name,vendorType:d.vendorType||'',phone:d.phone||''});
+      case 'ADD_VENDOR_TYPE':return api('createLookup',{kind:'VENDOR_TYPE',name:d.name,projectId:S.projectId}).then(loadLookups);
+      case 'ADD_SALARY_ROLE':return api('createLookup',{kind:'SALARY_ROLE',name:d.name,projectId:S.projectId}).then(loadLookups);
+      case 'ADD_UNIT_TYPE':return api('createLookup',{kind:'INVENTORY_TYPE',name:d.name,projectId:S.projectId}).then(loadLookups);
+      default:return Promise.resolve();
+    }
+  }
+  function showBatchReview(items){
+    var live=items.slice();
+    openSheet('Review '+items.length+' entries','<p class="muted" style="margin:0 0 12px;font-size:13px">I understood these from what you said. Remove any you don\'t want, then approve.</p><div id="brBody"></div><button class="btn btn-primary btn-block" id="brApprove" style="margin-top:8px"></button>',function(root){
+      function render(){
+        var body=$('#brBody',root);
+        body.innerHTML=live.map(function(it,idx){var s=itemSummary(it);
+          return '<div class="item" style="cursor:default"><div class="av">'+I(s.icon)+'</div><div class="meta"><div class="t">'+esc(s.title)+'</div><div class="s">'+esc(s.sub)+'</div></div>'+(s.amt?'<div class="amt '+s.cls+'">'+s.amt+'</div>':'')+'<button class="br-x" data-x="'+idx+'" aria-label="Remove">'+I('close')+'</button></div>';
+        }).join('');
+        $all('[data-x]',body).forEach(function(b){b.onclick=function(){live.splice(Number(b.getAttribute('data-x')),1);if(!live.length){closeSheet();return;}render();};});
+        var ap=$('#brApprove',root);ap.innerHTML=I('check')+' Approve all ('+live.length+')';
+      }
+      render();
+      $('#brApprove',root).onclick=function(){
+        if(!live.length)return;var ap=$('#brApprove',root);ap.disabled=true;ap.innerHTML='<span class="spin"></span>';
+        var total=live.length,ok=0,fail=0;
+        (function next(i){
+          if(i>=total){invalidateTx();closeSheet();
+            toast('Saved '+ok+' entr'+(ok===1?'y':'ies')+(fail?', '+fail+' skipped':''),fail?'err':'ok');
+            chatBot.push('bot','Saved '+ok+' of '+total+' entries.');
+            if(S.route==='dashboard'||S.route==='ledger'||S.route==='reminders')go(S.route);return;}
+          executeItem(live[i]).then(function(){ok++;next(i+1);}).catch(function(){fail++;next(i+1);});
+        })(0);
+      };
+    });
+  }
   function showTxConfirm(sg,rawText,fromAi,confidence){
     var cats=Object.keys(CAT);
     openSheet(fromAi?'Confirm entry':'New entry',
-      (fromAi?'<div class="chip" style="margin-bottom:14px">'+Math.round((confidence||0)*100)+'% sure. Edit anything, then save.</div>':'')+
+      (fromAi?'<div class="chip" style="margin-bottom:14px">'+(Number(confidence)>0?Math.round(confidence*100)+'% sure. ':'')+'Edit anything, then save.</div>':'')+
       '<div class="row2"><div class="field"><label>Type</label><select id="cType"><option value="EXPENSE"'+(sg.type!=='INCOME'?' selected':'')+'>Money out</option><option value="INCOME"'+(sg.type==='INCOME'?' selected':'')+'>Money in</option></select></div>'+
       '<div class="field"><label>Category</label><select id="cCat">'+cats.map(function(c){return '<option value="'+c+'"'+(sg.category===c?' selected':'')+'>'+CAT[c].label+'</option>';}).join('')+'</select></div></div>'+
       '<div class="field" id="subWrap"></div><div class="field" id="venWrap"></div>'+
@@ -398,21 +465,28 @@
     if(!btn)return;
     if(!BK.voice.supported){btn.addEventListener('click',function(){openTypeSheet('');});return;}
     var holding=false,downAt=0;
-    function start(e){if(holding)return;e.preventDefault();holding=true;downAt=Date.now();
-      try{btn.setPointerCapture(e.pointerId);}catch(x){}
+    function end(){ // release ANYWHERE stops it (the overlay sits on top of the mic button)
+      if(!holding)return;holding=false;
+      window.removeEventListener('pointerup',end);window.removeEventListener('pointercancel',end);
+      window.removeEventListener('touchend',end);window.removeEventListener('touchcancel',end);
+      btn.classList.remove('rec');
+      BK.voice.stop(); // -> onDone below
+    }
+    function start(e){
+      if(holding)return;e.preventDefault();holding=true;downAt=Date.now();
       btn.classList.add('rec');openVoiceOverlay();
+      window.addEventListener('pointerup',end);window.addEventListener('pointercancel',end);
+      window.addEventListener('touchend',end);window.addEventListener('touchcancel',end);
       BK.voice.start(
         function(t){updateVoiceOverlay(t);},
-        function(fin){btn.classList.remove('rec');closeVoiceOverlay();
-          if(Date.now()-downAt<350&&!fin){openTypeSheet('');return;} // quick tap -> type instead
-          handleUtterance(fin);},
-        function(err){btn.classList.remove('rec');closeVoiceOverlay();if(err==='not-allowed')toast('Microphone blocked. Allow access or type.','err');}
+        function(fin){btn.classList.remove('rec');
+          if(Date.now()-downAt<350&&!fin){hideVoiceOverlay();openTypeSheet('');return;} // quick tap -> type
+          if(!fin){hideVoiceOverlay();toast('Did not catch that. Try again.');return;}
+          setOverlayProcessing();handleUtterance(fin);},
+        function(err){holding=false;btn.classList.remove('rec');hideVoiceOverlay();if(err==='not-allowed')toast('Microphone blocked. Allow access or type.','err');}
       );
     }
-    function end(e){if(!holding)return;holding=false;try{e.preventDefault();}catch(x){}BK.voice.stop();}
     btn.addEventListener('pointerdown',start);
-    btn.addEventListener('pointerup',end);
-    btn.addEventListener('pointercancel',end);
   }
   // Click-to-toggle mic for the desktop chatbot: first click records (live transcript into
   // the input), second click stops. User reviews, then sends. No hold-release on desktop.
@@ -438,9 +512,13 @@
     });
   }
   function openVoiceOverlay(){var o=$('#voiceOverlay');if(!o)return;o.classList.remove('hide');
-    o.innerHTML='<div class="vo-card"><div class="vo-mic">'+I('mic')+'</div><div class="vo-status" id="voStatus">Listening</div><div class="vo-text" id="voText">Speak now</div><div class="vo-hint">Release to save</div></div>';}
+    o.innerHTML='<div class="vo-card"><div class="vo-mic" id="voMic">'+I('mic')+'</div><div class="vo-status" id="voStatus">Listening</div><div class="vo-text" id="voText">Speak now</div><div class="vo-hint" id="voHint">Release to save</div></div>';}
   function updateVoiceOverlay(t){var e=$('#voText');if(e)e.textContent=t||'Speak now';}
-  function closeVoiceOverlay(){var o=$('#voiceOverlay');if(!o)return;var st=$('#voStatus');if(st)st.textContent='Understanding';setTimeout(function(){o.classList.add('hide');o.innerHTML='';},160);}
+  function setOverlayProcessing(){var o=$('#voiceOverlay');if(!o||o.classList.contains('hide'))return;
+    var st=$('#voStatus');if(st)st.textContent='Understanding';
+    var mic=$('#voMic');if(mic){mic.classList.remove('vo-mic');mic.className='vo-mic proc';mic.innerHTML='<span class="spin"></span>';}
+    var hint=$('#voHint');if(hint)hint.textContent='One moment';}
+  function hideVoiceOverlay(){var o=$('#voiceOverlay');if(!o)return;o.classList.add('hide');o.innerHTML='';}
 
   /* ======================= LEDGER (monthly) ======================= */
   var ledFilter='all',ledFrom='',ledTo='';
