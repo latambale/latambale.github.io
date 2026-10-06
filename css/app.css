@@ -200,6 +200,46 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
 .skeleton{background:linear-gradient(90deg,var(--line) 25%,var(--card-2) 37%,var(--line) 63%);background-size:400% 100%;animation:sk 1.3s ease infinite;border-radius:10px}
 @keyframes sk{0%{background-position:100% 0}100%{background-position:-100% 0}}
 
+/* ---------- hero KPI margin chip (normal flow, no overlap) ---------- */
+.kpi.hero .kchip{display:inline-block;margin-top:12px;font-size:12px;font-weight:700;background:rgba(255,255,255,.15);color:#fff;padding:4px 11px;border-radius:999px}
+
+/* ---------- floating assistant (desktop): mic FAB + chatbot ---------- */
+.assist-dock{position:fixed;right:26px;bottom:26px;z-index:90;display:flex;flex-direction:column;gap:12px;align-items:center}
+.assist-btn{border:0;cursor:pointer;display:grid;place-items:center;box-shadow:var(--sh-3);transition:transform var(--fast) var(--ez),background var(--fast)}
+.assist-btn:hover{transform:scale(1.06)} .assist-btn:active{transform:scale(.95)}
+.mic-fab{width:58px;height:58px;border-radius:50%;background:var(--ink);color:#fff;touch-action:none}
+.mic-fab .ic{width:25px;height:25px}
+.mic-fab.rec{background:var(--neg);animation:rec 1.3s infinite}
+.chat-btn{width:46px;height:46px;border-radius:50%;background:var(--card);color:var(--ink);border:1px solid var(--line-2)}
+.chat-btn .ic{width:20px;height:20px;color:var(--accent)}
+
+.chat-panel{position:fixed;right:26px;bottom:98px;z-index:91;width:366px;max-width:calc(100vw - 40px);height:468px;max-height:72vh;
+  background:var(--card);border:1px solid var(--line);border-radius:var(--r-lg);box-shadow:var(--sh-3);display:flex;flex-direction:column;overflow:hidden;animation:pop .26s var(--ez)}
+.chat-h{display:flex;align-items:center;justify-content:space-between;padding:14px 16px;border-bottom:1px solid var(--line)}
+.chat-title{display:flex;align-items:center;gap:8px;font-weight:700;font-size:15px}
+.chat-title .ic{width:18px;height:18px;color:var(--accent)}
+.chat-msgs{flex:1;overflow:auto;padding:16px;display:flex;flex-direction:column;gap:10px;background:var(--paper)}
+.msg{max-width:85%;padding:10px 13px;border-radius:14px;font-size:14px;line-height:1.45;overflow-wrap:anywhere}
+.msg.user{align-self:flex-end;background:var(--ink);color:#fff;border-bottom-right-radius:5px}
+.msg.bot{align-self:flex-start;background:var(--card);border:1px solid var(--line);border-bottom-left-radius:5px}
+.msg.thinking .dots{display:inline-flex;gap:4px}
+.msg.thinking i{width:6px;height:6px;border-radius:50%;background:var(--txt-3);display:inline-block;animation:bounce 1.2s infinite}
+.msg.thinking i:nth-child(2){animation-delay:.15s} .msg.thinking i:nth-child(3){animation-delay:.3s}
+@keyframes bounce{0%,80%,100%{transform:translateY(0);opacity:.5}40%{transform:translateY(-4px);opacity:1}}
+.chat-in{display:flex;gap:8px;padding:12px;border-top:1px solid var(--line);align-items:center;background:var(--card)}
+.chat-in input{flex:1}
+.chat-mic{touch-action:none} .chat-mic.rec{background:var(--neg);color:#fff;border-color:var(--neg)}
+.chat-send{background:var(--ink);color:#fff;border-color:var(--ink)}
+
+/* ---------- voice overlay (hold-to-talk popup) ---------- */
+#voiceOverlay{position:fixed;inset:0;z-index:150;display:grid;place-items:center;background:rgba(10,10,11,.55);backdrop-filter:blur(3px);animation:fade .2s}
+.vo-card{background:var(--card);border-radius:var(--r-lg);padding:30px 26px;width:min(420px,88vw);text-align:center;box-shadow:var(--sh-3);animation:pop .25s var(--ez)}
+.vo-mic{width:86px;height:86px;border-radius:50%;background:var(--neg);color:#fff;display:grid;place-items:center;margin:0 auto 16px;animation:rec 1.3s infinite}
+.vo-mic .ic{width:36px;height:36px}
+.vo-status{font-weight:700;font-size:15px;color:var(--neg);letter-spacing:.02em}
+.vo-text{margin-top:10px;font-size:18px;min-height:54px;color:var(--txt);line-height:1.4}
+.vo-hint{margin-top:14px;font-size:12.5px;color:var(--txt-3)}
+
 /* ---------- RESPONSIVE: mobile ---------- */
 @media (max-width:899px){
   .shell{grid-template-columns:1fr}
@@ -212,7 +252,12 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
   .content{padding:16px 16px calc(var(--tab) + 28px);max-width:100%}
   .page-h h1{font-size:22px}
   .kpis{grid-template-columns:1fr 1fr}
+  .kpi.hero{grid-column:1 / -1}
   .dash-grid{grid-template-columns:1fr}
+  /* desktop floating assistant is hidden on mobile; the center tab mic is used instead */
+  .assist-dock,.chat-panel{display:none!important}
+  .tab.center .fab{touch-action:none}
+  .tab.center.rec .fab{background:var(--neg);animation:rec 1.3s infinite}
   .tabbar{display:flex;position:fixed;bottom:0;left:0;right:0;z-index:50;height:calc(var(--tab) + env(safe-area-inset-bottom));
     padding-bottom:env(safe-area-inset-bottom);align-items:center;justify-content:space-around;
     background:rgba(255,255,255,.94);backdrop-filter:blur(14px);border-top:1px solid var(--line)}

@@ -36,7 +36,7 @@
   var CAT={BOOKING:{label:'Booking',lookup:'INVENTORY_TYPE'},VENDOR:{label:'Vendor',lookup:'VENDOR_TYPE'},
     SALARY:{label:'Salary',lookup:'SALARY_ROLE'},MISC:{label:'Miscellaneous',lookup:'MISC_TYPE'},
     LAND:{label:'Land cost',lookup:null},CHALLAN:{label:'Challan / Sanction',lookup:null}};
-  var NAV=[['dashboard','Dashboard','dashboard'],['add','Add entry','mic'],['ledger','Ledger','ledger'],
+  var NAV=[['dashboard','Dashboard','dashboard'],['ledger','Ledger','ledger'],
     ['bookings','Bookings','home'],['vendors','Vendors','cube'],['invoices','Invoices','doc'],
     ['gst','GST invoices','folder'],['reminders','Reminders','bell']];
 
@@ -113,12 +113,15 @@
           '<div class="content"><div id="view"></div></div>'+
           tabbar()+
         '</div>'+
-      '</div>';
+      '</div>'+
+      '<div id="assistant"></div><div id="voiceOverlay" class="hide"></div>';
     $('#sideUser').textContent=S.user?S.user.email:'';
     $('#navGroup').addEventListener('click',navClick);
     $('.side-foot').addEventListener('click',navClick);
     $('#logoutBtn').addEventListener('click',logout);
     $('#tabbar').addEventListener('click',navClick);
+    mountAssistant();
+    bindHoldMic($('#micTab'));
   }
   function navBtn(n){return '<button class="nav-item" data-go="'+n[0]+'">'+I(n[2])+'<span>'+n[1]+'</span></button>';}
   function navClick(e){var b=e.target.closest('[data-go]');if(b)go(b.getAttribute('data-go'));}
@@ -126,7 +129,7 @@
     function t(id,label,icon){return '<button class="tab" data-go="'+id+'">'+I(icon)+'<span>'+label+'</span></button>';}
     return '<nav class="tabbar" id="tabbar">'+
       t('dashboard','Home','dashboard')+t('ledger','Ledger','ledger')+
-      '<button class="tab center" data-go="add" aria-label="Add entry"><span class="fab">'+I('mic')+'</span></button>'+
+      '<button class="tab center" id="micTab" aria-label="Hold to speak"><span class="fab">'+I('mic')+'</span></button>'+
       t('reminders','Reminders','bell')+t('more','More','more')+'</nav>';
   }
   function syncProjSel(){
@@ -141,7 +144,7 @@
   }
 
   /* ======================= ROUTER ======================= */
-  var VIEWS={dashboard:viewDashboard,add:viewAdd,ledger:viewLedger,bookings:viewBookings,
+  var VIEWS={dashboard:viewDashboard,ledger:viewLedger,bookings:viewBookings,
     vendors:viewVendors,invoices:viewInvoices,gst:viewGst,reminders:viewReminders,settings:viewSettings};
   function go(route){
     seq++;destroyCharts();
@@ -223,7 +226,7 @@
       '<div class="kpi pos"><div class="kl">'+I('arrowDown')+'In (period)</div><div class="kv">'+money(p.income)+'</div></div>'+
       '<div class="kpi neg"><div class="kl">'+I('arrowUp')+'Out (period)</div><div class="kv">'+money(p.expense)+'</div></div>'+
       '<div class="kpi"><div class="kl">'+I('wallet')+'Net (period)</div><div class="kv">'+money(p.net)+'</div></div>'+
-      '<div class="kpi hero"><span class="pill-ratio">'+Math.round(t.profitRatio*100)+'% margin</span><div class="kl">'+I('trendUp')+'Profit (lifetime)</div><div class="kv">'+money(t.profit)+'</div></div>';
+      '<div class="kpi hero"><div class="kl">'+I('trendUp')+'Profit (lifetime)</div><div class="kv">'+money(t.profit)+'</div><div class="kchip">'+Math.round(t.profitRatio*100)+'% margin</div></div>';
   }
   function renderTrend(s){
     var c=$('#trendC');if(!c||!window.Chart)return;
@@ -257,41 +260,20 @@
     scales:{x:{grid:{display:false},ticks:{color:'#8A8A93',font:{size:11}}},
       y:{ticks:{color:'#8A8A93',font:{size:11},callback:function(v){return BK.brand.currency.symbol+(Math.abs(v)>=1000?(v/1000)+'k':v);}},grid:{color:'#F0F0F4'}}}};}
 
-  /* ======================= ADD ENTRY (voice + commands) ======================= */
-  function viewAdd(v,mySeq){
-    var voiceOn=BK.voice.supported&&S.features.ai!==false;
-    v.innerHTML=pageHead('Add entry','Speak or type what happened on site today')+
-      '<div class="card" style="max-width:560px">'+
-        '<div class="field"><textarea id="entryText" rows="2" placeholder="e.g. Paid 45 thousand to Sharma Steel today"></textarea></div>'+
-        '<div class="mic-stage">'+
-          '<button class="mic-big" id="micBtn"'+(BK.voice.supported?'':' disabled')+' aria-label="Hold to speak">'+I('mic')+'</button>'+
-          '<div class="mic-hint" id="micHint">'+(BK.voice.supported?'Tap to speak. Tap again to stop.':'Voice not supported here. Type your entry.')+'</div>'+
-        '</div>'+
-        '<div class="row2" style="margin-top:16px"><button class="btn btn-accent" id="goBtn">'+I('sparkle')+' Understand</button><button class="btn btn-ghost" id="manBtn">'+I('edit')+' Manual entry</button></div>'+
-        (S.features.ai===false?'<p class="muted" style="font-size:12.5px;margin-top:10px">AI is off on the server. Use manual entry.</p>':'')+
-      '</div><div id="resultBox"></div>';
-    var txt=$('#entryText'),mic=$('#micBtn');
-    if(BK.voice.supported)mic.onclick=function(){
-      if(BK.voice.listening){BK.voice.stop();mic.classList.remove('rec');$('#micHint').textContent='Processing...';return;}
-      mic.classList.add('rec');$('#micHint').textContent='Listening... tap to stop';
-      BK.voice.start(
-        function(t){txt.value=t;},
-        function(fin){mic.classList.remove('rec');$('#micHint').textContent='Tap to speak again';if(fin&&S.features.ai!==false)interpret(fin,mySeq);else $('#micHint').textContent='Tap to speak';},
-        function(err){mic.classList.remove('rec');$('#micHint').textContent=err==='not-allowed'?'Microphone blocked. Allow access or type.':'Could not hear that. Try typing.';}
-      );
-    };
-    $('#goBtn').onclick=function(){var t=txt.value.trim();if(!t){toast('Say or type something first');return;}if(S.features.ai===false){manualConfirm(t);}else interpret(t,mySeq);};
-    $('#manBtn').onclick=function(){manualConfirm(txt.value.trim());};
-  }
-  function interpret(text,mySeq){
-    var box=$('#resultBox');if(box)box.innerHTML='<div class="card" style="max-width:560px"><div class="skeleton" style="height:120px"></div></div>';
-    api('interpret',{text:text,projectId:S.projectId}).then(function(d){
-      if(!alive(mySeq))return;dispatchIntent(d.result,text);
-    }).catch(function(e){if(!alive(mySeq))return;if(box)box.innerHTML='';
-      if(e.code==='AI_DISABLED'){manualConfirm(text);}else toast(errMsg(e),'err');});
+  /* ======================= VOICE / COMMAND ASSISTANT ======================= */
+  // Global utterance handler (from the hold-to-talk mic OR the chatbot text box).
+  function handleUtterance(text){
+    text=(text||'').trim();
+    if(!text){toast('Did not catch that. Try again.');return;}
+    chatBot.push('user',text);
+    if(S.features.ai===false){manualConfirm(text);return;}
+    chatBot.thinking(true);
+    api('interpret',{text:text,projectId:S.projectId}).then(function(d){chatBot.thinking(false);dispatchIntent(d.result,text);})
+      .catch(function(e){chatBot.thinking(false);if(e.code==='AI_DISABLED'){manualConfirm(text);}else{toast(errMsg(e),'err');chatBot.push('bot',errMsg(e));}});
   }
   function dispatchIntent(r,rawText){
     var d=r.data||{};
+    if(r.speak)chatBot.push('bot',r.speak);
     if(r.intent==='ADD_TRANSACTION'){return showTxConfirm(d,rawText,true,r.confidence);}
     if(r.intent==='SET_LAND_COST'){return commandConfirm('Set land cost','Update land cost for '+esc(curProject().name)+' to '+money(d.amount)+'?',function(){
       return api('updateProject',{id:S.projectId,landCost:Number(d.amount)||0}).then(function(res){S.projects=S.projects.map(function(x){return x.id===res.project.id?res.project:x;});});},'Land cost updated');}
@@ -309,10 +291,9 @@
   }
   function manualConfirm(text){showTxConfirm({type:'EXPENSE',category:'VENDOR',subCategory:'',vendorName:'',amount:0,date:todayStr(),note:text||''},text||'',false,1);}
   function showTxConfirm(sg,rawText,fromAi,confidence){
-    var box=$('#resultBox');if(!box)return;
     var cats=Object.keys(CAT);
-    box.innerHTML='<div class="card confirm view" style="max-width:560px">'+
-      '<div class="card-h"><h3>'+(fromAi?'Confirm this entry':'New entry')+'</h3>'+(fromAi?'<span class="chip">'+Math.round((confidence||0)*100)+'% sure</span>':'')+'</div>'+
+    openSheet(fromAi?'Confirm entry':'New entry',
+      (fromAi?'<div class="chip" style="margin-bottom:14px">'+Math.round((confidence||0)*100)+'% sure. Edit anything, then save.</div>':'')+
       '<div class="row2"><div class="field"><label>Type</label><select id="cType"><option value="EXPENSE"'+(sg.type!=='INCOME'?' selected':'')+'>Money out</option><option value="INCOME"'+(sg.type==='INCOME'?' selected':'')+'>Money in</option></select></div>'+
       '<div class="field"><label>Category</label><select id="cCat">'+cats.map(function(c){return '<option value="'+c+'"'+(sg.category===c?' selected':'')+'>'+CAT[c].label+'</option>';}).join('')+'</select></div></div>'+
       '<div class="field" id="subWrap"></div><div class="field" id="venWrap"></div>'+
@@ -322,27 +303,30 @@
       '<div class="row2" style="margin-top:10px"><div class="field"><label>Rate</label><input id="cRate" type="number" value="'+(sg.rate||'')+'"/></div>'+
       '<div class="field"><label>Qty &amp; unit</label><div style="display:flex;gap:8px"><input id="cQty" type="number" value="'+(sg.quantity||'')+'" style="flex:1"/><input id="cUnit" placeholder="bags" value="'+esc(sg.unit||'')+'" style="flex:1"/></div></div></div></details>'+
       '<div class="field"><label>Note</label><input id="cNote" value="'+esc(sg.note||'')+'"/></div>'+
-      '<button class="btn btn-primary btn-block" id="saveTx">'+I('check')+' Save entry</button></div>';
-    function refreshSub(){
-      var cat=$('#cCat').value,sub=$('#subWrap'),ven=$('#venWrap'),lk=CAT[cat].lookup;
-      if(lk){var opts=lookupNames(lk);
-        sub.innerHTML='<label>'+(cat==='SALARY'?'Role':cat==='BOOKING'?'Unit type':'Type')+'</label><select id="cSub">'+opts.map(function(o){return '<option'+(String(sg.subCategory).toLowerCase()===o.toLowerCase()?' selected':'')+'>'+esc(o)+'</option>';}).join('')+'<option value="__new">+ Add new</option></select>';
-        $('#cSub').onchange=function(){if(this.value==='__new')addLookupPrompt(lk,this);};}
-      else sub.innerHTML='';
-      ven.innerHTML=(cat==='VENDOR')?'<label>Vendor name</label><input id="cVen" placeholder="e.g. Sharma Steel" value="'+esc(sg.vendorName||'')+'"/>':'';
-    }
-    $('#cCat').onchange=refreshSub;refreshSub();
-    $('#saveTx').onclick=function(){
-      var payload={projectId:S.projectId,type:$('#cType').value,category:$('#cCat').value,
-        subCategory:$('#cSub')?$('#cSub').value:'',vendorName:$('#cVen')?$('#cVen').value.trim():'',
-        amount:Number($('#cAmt').value)||0,rate:Number($('#cRate')&&$('#cRate').value)||0,
-        quantity:Number($('#cQty')&&$('#cQty').value)||0,unit:($('#cUnit')&&$('#cUnit').value)||'',
-        date:$('#cDate').value||todayStr(),note:$('#cNote').value.trim(),source:fromAi?'voice':'manual',rawText:rawText||''};
-      if(!(payload.amount>0)){toast('Enter an amount','err');return;}
-      var btn=$('#saveTx');btn.disabled=true;btn.innerHTML='<span class="spin"></span>';
-      api('createTransaction',payload).then(function(){invalidateTx();toast('Saved','ok');box.innerHTML='';$('#entryText').value='';})
-        .catch(function(e){btn.disabled=false;btn.innerHTML=I('check')+' Save entry';toast(errMsg(e),'err');});
-    };
+      '<button class="btn btn-primary btn-block" id="saveTx">'+I('check')+' Save entry</button>',
+      function(root){
+        function refreshSub(){
+          var cat=$('#cCat',root).value,sub=$('#subWrap',root),ven=$('#venWrap',root),lk=CAT[cat].lookup;
+          if(lk){var opts=lookupNames(lk);
+            sub.innerHTML='<label>'+(cat==='SALARY'?'Role':cat==='BOOKING'?'Unit type':'Type')+'</label><select id="cSub">'+opts.map(function(o){return '<option'+(String(sg.subCategory).toLowerCase()===o.toLowerCase()?' selected':'')+'>'+esc(o)+'</option>';}).join('')+'<option value="__new">+ Add new</option></select>';
+            $('#cSub',root).onchange=function(){if(this.value==='__new')addLookupPrompt(lk,this);};}
+          else sub.innerHTML='';
+          ven.innerHTML=(cat==='VENDOR')?'<label>Vendor name</label><input id="cVen" placeholder="e.g. Sharma Steel" value="'+esc(sg.vendorName||'')+'"/>':'';
+        }
+        $('#cCat',root).onchange=refreshSub;refreshSub();
+        $('#saveTx',root).onclick=function(){
+          var g=function(id){return $('#'+id,root);};
+          var payload={projectId:S.projectId,type:g('cType').value,category:g('cCat').value,
+            subCategory:g('cSub')?g('cSub').value:'',vendorName:g('cVen')?g('cVen').value.trim():'',
+            amount:Number(g('cAmt').value)||0,rate:Number(g('cRate')&&g('cRate').value)||0,
+            quantity:Number(g('cQty')&&g('cQty').value)||0,unit:(g('cUnit')&&g('cUnit').value)||'',
+            date:g('cDate').value||todayStr(),note:g('cNote').value.trim(),source:fromAi?'voice':'manual',rawText:rawText||''};
+          if(!(payload.amount>0)){toast('Enter an amount','err');return;}
+          var btn=g('saveTx');btn.disabled=true;btn.innerHTML='<span class="spin"></span>';
+          api('createTransaction',payload).then(function(){invalidateTx();closeSheet();toast('Saved','ok');chatBot.push('bot','Saved '+(payload.type==='INCOME'?'income':'expense')+' of '+money(payload.amount)+'.');if(S.route==='dashboard'||S.route==='ledger')go(S.route);})
+            .catch(function(e){btn.disabled=false;btn.innerHTML=I('check')+' Save entry';toast(errMsg(e),'err');});
+        };
+      });
   }
   function kindLabel(k){return{VENDOR_TYPE:'vendor type',SALARY_ROLE:'salary role',INVENTORY_TYPE:'unit type',MISC_TYPE:'misc type'}[k]||'item';}
   function addLookupPrompt(kind,selectEl){
@@ -352,6 +336,69 @@
           if(selectEl){var o=document.createElement('option');o.textContent=name;o.selected=true;selectEl.insertBefore(o,selectEl.lastChild);}closeSheet();toast('Added','ok');});}).catch(function(e){toast(errMsg(e),'err');});};
     });
   }
+
+  /* ---- floating assistant: hold-to-talk mic (all views) + desktop chatbot ---- */
+  function mountAssistant(){
+    var el=$('#assistant');if(!el)return;
+    el.innerHTML=
+      '<div class="assist-dock">'+
+        '<button class="assist-btn chat-btn" id="chatToggle" aria-label="Open assistant">'+I('sparkle')+'</button>'+
+        '<button class="assist-btn mic-fab" id="micFab" aria-label="Hold to speak">'+I('mic')+'</button>'+
+      '</div>'+
+      '<div class="chat-panel hide" id="chatPanel">'+
+        '<div class="chat-h"><span class="chat-title">'+I('sparkle')+' Assistant</span><button class="btn-icon" id="chatClose" aria-label="Close">'+I('close')+'</button></div>'+
+        '<div class="chat-msgs" id="chatMsgs"></div>'+
+        '<div class="chat-in"><input id="chatText" placeholder="Type, or hold the mic to speak" autocomplete="off"/>'+
+          '<button class="btn-icon chat-mic" id="chatMic" aria-label="Hold to speak">'+I('mic')+'</button>'+
+          '<button class="btn-icon chat-send" id="chatSend" aria-label="Send">'+I('chevronRight')+'</button></div>'+
+      '</div>';
+    bindHoldMic($('#micFab'));
+    bindHoldMic($('#chatMic'));
+    $('#chatToggle').onclick=chatBot.toggle;
+    $('#chatClose').onclick=chatBot.close;
+    $('#chatSend').onclick=function(){var t=$('#chatText').value.trim();if(!t)return;$('#chatText').value='';handleUtterance(t);};
+    $('#chatText').addEventListener('keydown',function(e){if(e.key==='Enter'){e.preventDefault();$('#chatSend').click();}});
+  }
+  var chatBot={
+    open:false,
+    toggle:function(){chatBot.open?chatBot.close():chatBot.show();},
+    show:function(){var p=$('#chatPanel');if(!p)return;p.classList.remove('hide');chatBot.open=true;var m=$('#chatMsgs');if(m&&!m.children.length)chatBot.push('bot','Hi. Tell me what you paid or earned, or ask me to set the land cost, add a reminder, create a project, and more.');setTimeout(function(){var i=$('#chatText');i&&i.focus();},60);},
+    close:function(){var p=$('#chatPanel');if(p)p.classList.add('hide');chatBot.open=false;},
+    push:function(who,text){var m=$('#chatMsgs');if(!m||!text)return;m.appendChild(h('<div class="msg '+who+'">'+esc(text)+'</div>'));m.scrollTop=m.scrollHeight;},
+    thinking:function(on){var m=$('#chatMsgs');if(!m)return;var t=$('#chatThink');if(on){if(!t){m.appendChild(h('<div class="msg bot thinking" id="chatThink"><span class="dots"><i></i><i></i><i></i></span></div>'));m.scrollTop=m.scrollHeight;}}else if(t)t.remove();}
+  };
+  function bindHoldMic(btn){
+    if(!btn)return;
+    if(!BK.voice.supported){btn.addEventListener('click',function(){openTypeSheet('');});return;}
+    var holding=false,downAt=0;
+    function start(e){if(holding)return;e.preventDefault();holding=true;downAt=Date.now();
+      try{btn.setPointerCapture(e.pointerId);}catch(x){}
+      btn.classList.add('rec');openVoiceOverlay();
+      BK.voice.start(
+        function(t){updateVoiceOverlay(t);},
+        function(fin){btn.classList.remove('rec');closeVoiceOverlay();
+          if(Date.now()-downAt<350&&!fin){openTypeSheet('');return;} // quick tap -> type instead
+          handleUtterance(fin);},
+        function(err){btn.classList.remove('rec');closeVoiceOverlay();if(err==='not-allowed')toast('Microphone blocked. Allow access or type.','err');}
+      );
+    }
+    function end(e){if(!holding)return;holding=false;try{e.preventDefault();}catch(x){}BK.voice.stop();}
+    btn.addEventListener('pointerdown',start);
+    btn.addEventListener('pointerup',end);
+    btn.addEventListener('pointercancel',end);
+  }
+  function openTypeSheet(pre){
+    openSheet('What happened?','<div class="field"><textarea id="tyT" rows="2" placeholder="e.g. Paid 45 thousand to Sharma Steel today">'+esc(pre||'')+'</textarea></div>'+
+      '<div class="row2"><button class="btn btn-accent" id="tyGo">'+I('sparkle')+' Understand</button><button class="btn btn-ghost" id="tyMan">'+I('edit')+' Manual form</button></div>',function(root){
+      setTimeout(function(){var t=$('#tyT',root);t&&t.focus();},60);
+      $('#tyGo',root).onclick=function(){var t=$('#tyT',root).value.trim();if(!t){toast('Type something first');return;}closeSheet();if(S.features.ai===false)manualConfirm(t);else handleUtterance(t);};
+      $('#tyMan',root).onclick=function(){var t=$('#tyT',root).value.trim();closeSheet();manualConfirm(t);};
+    });
+  }
+  function openVoiceOverlay(){var o=$('#voiceOverlay');if(!o)return;o.classList.remove('hide');
+    o.innerHTML='<div class="vo-card"><div class="vo-mic">'+I('mic')+'</div><div class="vo-status" id="voStatus">Listening</div><div class="vo-text" id="voText">Speak now</div><div class="vo-hint">Release to save</div></div>';}
+  function updateVoiceOverlay(t){var e=$('#voText');if(e)e.textContent=t||'Speak now';}
+  function closeVoiceOverlay(){var o=$('#voiceOverlay');if(!o)return;var st=$('#voStatus');if(st)st.textContent='Understanding';setTimeout(function(){o.classList.add('hide');o.innerHTML='';},160);}
 
   /* ======================= LEDGER (monthly) ======================= */
   var ledFilter='all',ledFrom='',ledTo='';
@@ -649,8 +696,6 @@
       $('#cY',root).onclick=function(){var btn=$('#cY',root);btn.disabled=true;btn.innerHTML='<span class="spin"></span>';
         Promise.resolve(action()).then(function(){closeSheet();toast(okMsg||'Done','ok');syncProjSel();after?after():(S.route==='dashboard'&&go('dashboard'));}).catch(function(e){btn.disabled=false;btn.innerHTML=I('check')+' Yes';toast(errMsg(e),'err');});};
     });
-    // also clear the add-entry result box
-    var rb=$('#resultBox');if(rb)rb.innerHTML='';
   }
   function base64ToBlob(b64,mime){var bin=atob(b64),len=bin.length,arr=new Uint8Array(len);for(var i=0;i<len;i++)arr[i]=bin.charCodeAt(i);return new Blob([arr],{type:mime||'application/octet-stream'});}
   function downloadBase64(b64,name,mime){var url=URL.createObjectURL(base64ToBlob(b64,mime));var a=document.createElement('a');a.href=url;a.download=name;document.body.appendChild(a);a.click();a.remove();setTimeout(function(){URL.revokeObjectURL(url);},60000);}
