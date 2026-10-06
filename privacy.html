@@ -3,42 +3,51 @@
 <head>
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
-<title>Privacy · BuildKhata</title>
+<title>Privacy Policy &middot; BuildKhata</title>
+<meta name="description" content="How BuildKhata handles your data. Your projects and transactions stay in your own Google Sheet."/>
 <meta name="theme-color" content="#0B0B0C"/>
 <link rel="icon" href="assets/icons/icon.svg"/>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet"/>
 <link rel="stylesheet" href="css/site.css"/>
-<style>.doc{max-width:760px;margin:0 auto;padding:120px 24px 80px}.doc h1{font-size:34px;letter-spacing:-.02em}.doc h2{margin-top:34px;font-size:20px}.doc p,.doc li{color:var(--ink2);font-size:15.5px}</style>
 </head>
 <body>
 <header class="nav scrolled"><div class="wrap nav-in">
   <a class="brand" href="index.html"><img src="assets/icons/icon.svg" alt=""/> BuildKhata</a>
-  <a class="btn btn-ghost" href="index.html">← Home</a>
+  <a class="btn btn-ghost" href="index.html">Back to home</a>
 </div></header>
 
 <main class="doc">
   <h1>Privacy Policy</h1>
-  <p class="muted">Prototype notice. This describes how the BuildKhata prototype handles data.</p>
+  <p class="updated">Prototype notice. This describes how the BuildKhata prototype handles data.</p>
 
   <h2>Your data lives in your Google Sheet</h2>
   <p>BuildKhata stores your projects, transactions, vendors and invoices in a Google Sheet that <strong>you own</strong>. We do not run a separate database of your business data. The app reads and writes that Sheet through a Google Apps Script backend that runs under your own Google account.</p>
 
-  <h2>Secrets &amp; keys</h2>
+  <h2>Secrets and keys</h2>
   <p>API keys (OpenAI, email) are stored only in your Apps Script project settings on Google's servers. They are never sent to the browser or the mobile app, and they are never stored in the app's code.</p>
 
-  <h2>Voice &amp; AI</h2>
-  <p>When you use voice entry, your device converts speech to text, and that text (not audio) is sent to the OpenAI API through the backend to extract the transaction details. Only the sentence you spoke is sent; it is used to produce the structured entry and is subject to OpenAI's data policies.</p>
+  <h2>Voice and AI</h2>
+  <p>When you use voice entry, your device converts speech to text, and that text (not audio) is sent to the OpenAI GPT API through the backend to extract the transaction details. Only the sentence you spoke is sent; it is used to produce the structured entry and is subject to OpenAI's data policies.</p>
 
   <h2>Email</h2>
-  <p>If you enable email reports, summaries are sent via Resend to the address you configure. We don't use your email for anything else.</p>
+  <p>If you enable email reports and reminders, messages are sent via Resend to the address you configure. We do not use your email for anything else.</p>
 
   <h2>What we store in your browser</h2>
-  <p>A short-lived sign-in token and your chosen backend URL are stored in your browser's local storage so you stay signed in. Clearing site data removes them.</p>
+  <p>A short-lived sign-in token and your chosen project are stored in your browser's local storage so you stay signed in. Clearing site data removes them.</p>
+
+  <h2>Your choices</h2>
+  <p>You can export or delete your data at any time directly from your Google Sheet. Disabling email features stops all outgoing messages.</p>
 
   <h2>Contact</h2>
   <p>This is a prototype built for a specific user. For questions, contact the project owner.</p>
 </main>
 
-<footer><div class="wrap"><div class="copy">© <script>document.write(new Date().getFullYear())</script> BuildKhata. Prototype.</div></div></footer>
+<footer class="policy-foot"><div class="wrap">
+  <span class="muted" style="font-size:13.5px">&copy; <span id="yr"></span> BuildKhata. Prototype.</span>
+  <nav class="policy-links">
+    <a href="index.html">Home</a><a href="privacy.html">Privacy</a><a href="terms.html">Terms</a><a href="refund.html">Refund</a><a href="cookies.html">Cookies</a>
+  </nav>
+</div></footer>
+<script>document.getElementById('yr').textContent=new Date().getFullYear();</script>
 </body>
 </html>

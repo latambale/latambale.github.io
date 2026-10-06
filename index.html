@@ -4,13 +4,13 @@
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
 <title>BuildKhata: a builder's ledger, by voice</title>
-<meta name="description" content="BuildKhata is a dead-simple CRM for builders and contractors. Speak what you earned or spent on site today, and it logs, categorises and charts your project cashflow."/>
+<meta name="description" content="BuildKhata is a dead-simple CRM for builders and contractors. Speak what you earned or spent on site today, and GPT logs, categorises and charts your project cashflow. Try the live demo."/>
 <meta name="theme-color" content="#0B0B0C"/>
 <link rel="icon" href="assets/icons/icon.svg"/>
 <link rel="apple-touch-icon" href="assets/icons/icon.svg"/>
 <link rel="manifest" href="manifest.webmanifest"/>
 <meta property="og:title" content="BuildKhata: a builder's ledger, by voice"/>
-<meta property="og:description" content="Speak what happened on site today. BuildKhata does the rest."/>
+<meta property="og:description" content="Speak what happened on site today. GPT does the rest."/>
 <meta property="og:type" content="website"/>
 <link rel="preconnect" href="https://fonts.googleapis.com"/>
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
@@ -26,9 +26,10 @@
     <nav class="nav-links" id="navLinks">
       <a href="#features">Features</a>
       <a href="#how">How it works</a>
-      <a href="#demo">Demo</a>
+      <a href="#try">Try it</a>
       <a href="#pricing">Pricing</a>
-      <a href="#faq">FAQ</a>
+      <a href="#reviews">Reviews</a>
+      <a class="mobile-only" href="app.html">Sign in</a>
     </nav>
     <div class="nav-cta">
       <a class="btn btn-ghost" href="app.html">Sign in</a>
@@ -44,35 +45,44 @@
 <section class="hero">
   <div class="wrap hero-grid">
     <div class="reveal in">
-      <span class="eyebrow"><span class="dot"></span> Built for builders, not accountants</span>
+      <span class="eyebrow"><span class="dot"></span> Powered by GPT</span>
       <h1 class="hero-title">Just say what you spent today.</h1>
       <p class="hero-sub">BuildKhata turns a spoken sentence into a clean, categorised entry, and shows your project's cashflow, profit and reminders at a glance.</p>
       <div class="hero-cta">
-        <a class="btn btn-dark btn-lg" href="app.html">Open the app →</a>
-        <a class="btn btn-ghost btn-lg" href="#demo">See it work</a>
+        <a class="btn btn-dark btn-lg" href="app.html">Open the app</a>
+        <a class="btn btn-ghost btn-lg" href="#try">Try the live demo</a>
       </div>
-      <p class="hero-note">No spreadsheets to fight. Works on web &amp; Android. Your data stays in your own Google Sheet.</p>
+      <p class="hero-note">No spreadsheets to fight. Works on web and Android. Your data stays in your own Google Sheet.</p>
     </div>
-
-    <!-- voice → entry mock -->
     <div class="reveal in" data-d="1">
-      <div class="mock" id="mock">
+      <div class="mock">
         <div class="mock-head"><strong>Riverside Towers</strong><span class="chip">Today</span></div>
-        <div class="mic" aria-hidden="true">
-          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 1a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v1a7 7 0 0 1-14 0v-1"/><path d="M12 18v4"/></svg>
-        </div>
-        <div class="said" id="said">“Paid 45 thousand to Sharma Steel today.”</div>
-        <div class="chip-row" id="chips">
+        <div class="mic" aria-hidden="true" data-ic="mic"></div>
+        <div class="said">"Paid 45 thousand to Sharma Steel today."</div>
+        <div class="chip-row">
           <span class="chip exp">Expense</span>
           <span class="chip">Steel</span>
           <span class="chip">Sharma Steel</span>
-          <span class="chip amt">₹45,000</span>
+          <span class="chip amt">&#8377;45,000</span>
         </div>
         <div class="entry-card">
-          <div><div class="muted" style="font-size:12.5px">Logged to ledger</div><b>Sharma Steel · Steel</b></div>
-          <b style="color:var(--expense)">− ₹45,000</b>
+          <div><div class="muted" style="font-size:12.5px">Logged to ledger</div><b>Sharma Steel &middot; Steel</b></div>
+          <b style="color:var(--expense)">&minus; &#8377;45,000</b>
         </div>
       </div>
+    </div>
+  </div>
+</section>
+
+<!-- POWERED BY / TRUST -->
+<section class="powered">
+  <div class="wrap">
+    <p class="powered-label reveal">Built on tools you already trust</p>
+    <div class="badges reveal" data-d="1">
+      <span class="badge"><span data-ic="agent"></span> OpenAI GPT</span>
+      <span class="badge"><span data-ic="ledger"></span> Google Sheets</span>
+      <span class="badge"><span data-ic="settings"></span> Google Apps Script</span>
+      <span class="badge"><span data-ic="mail"></span> Resend email</span>
     </div>
   </div>
 </section>
@@ -86,10 +96,10 @@
       <p>Only the features a builder actually uses on site, each one two taps away.</p>
     </div>
     <div class="feat-grid">
-      <div class="feat reveal"><div class="ico" data-ic="mic"></div><h3>Voice entry</h3><p>Speak the day's payments and receipts. AI fills in amount, vendor, category and date.</p></div>
+      <div class="feat reveal"><div class="ico" data-ic="mic"></div><h3>Voice entry</h3><p>Speak the day's payments and receipts. GPT fills in amount, vendor, category and date.</p></div>
       <div class="feat reveal" data-d="1"><div class="ico" data-ic="building"></div><h3>Projects</h3><p>Track each site separately. Set land cost once; everything rolls up per project.</p></div>
       <div class="feat reveal" data-d="2"><div class="ico" data-ic="cube"></div><h3>Vendors &amp; salaries</h3><p>Steel, cement, tiles, labour, watchmen, CA and more. Add your own types any time.</p></div>
-      <div class="feat reveal"><div class="ico" data-ic="trendUp"></div><h3>Cashflow dashboard</h3><p>Pie &amp; trend charts, income vs expense, and profit, with custom date reports.</p></div>
+      <div class="feat reveal"><div class="ico" data-ic="trendUp"></div><h3>Cashflow dashboard</h3><p>Pie and trend charts, income vs expense, and profit, with custom date reports.</p></div>
       <div class="feat reveal" data-d="1"><div class="ico" data-ic="doc"></div><h3>Invoices &amp; GST vault</h3><p>Generate customer invoices; upload vendor GST bills and download them as one bundle.</p></div>
       <div class="feat reveal" data-d="2"><div class="ico" data-ic="bell"></div><h3>Reminders &amp; email</h3><p>Never miss a payment. Get a daily cashflow summary in your inbox.</p></div>
     </div>
@@ -102,35 +112,84 @@
     <div class="sec-head reveal">
       <div class="kicker">How it works</div>
       <h2>Three steps, zero training</h2>
-      <p>If a feature needs a manual, it doesn't belong here.</p>
+      <p>If a feature needs a manual, it does not belong here.</p>
     </div>
     <div class="steps">
-      <div class="step reveal"><div class="n">1</div><h3>Speak or type</h3><p>“Received 5 lakh booking for a 2BHK from Mr. Patil.” Tap the mic and talk.</p></div>
+      <div class="step reveal"><div class="n">1</div><h3>Speak or type</h3><p>"Received 5 lakh booking for a 2BHK from Mr. Patil." Tap the mic and talk.</p></div>
       <div class="step reveal" data-d="1"><div class="n">2</div><h3>Confirm the entry</h3><p>BuildKhata shows what it understood. Fix anything in a tap, then save.</p></div>
       <div class="step reveal" data-d="2"><div class="n">3</div><h3>Watch it add up</h3><p>Your dashboard updates instantly: income, expense, profit and projections.</p></div>
     </div>
   </div>
 </section>
 
-<!-- DEMO -->
-<section id="demo" style="background:var(--surface2)">
+<!-- TRY IT (interactive) -->
+<section class="tryit" id="try">
   <div class="wrap">
     <div class="sec-head reveal">
-      <div class="kicker">Demo</div>
-      <h2>Watch a day go in</h2>
-      <p>These are the exact sentences a site engineer might say. Press play.</p>
+      <div class="kicker">Try it now</div>
+      <h2>Type a sentence, watch it become an entry</h2>
+      <p>No sign-up needed. Type what you paid or received and see how BuildKhata reads it.</p>
     </div>
-    <div class="reveal" style="max-width:560px;margin:0 auto">
-      <div class="mock">
-        <div class="mock-head"><strong>Riverside Towers</strong><span class="chip" id="demoDate">Live demo</span></div>
-        <div class="said" id="demoSaid" style="min-height:52px">Tap play to hear a day of entries →</div>
-        <div class="chip-row" id="demoChips"></div>
-        <div style="display:flex;gap:10px;justify-content:center;margin-top:18px">
-          <button class="btn btn-accent" id="demoPlay">▶ Play demo</button>
-          <a class="btn btn-ghost" href="app.html">Try it yourself</a>
-        </div>
+    <div class="try-card reveal" data-d="1">
+      <div class="try-in">
+        <input id="tryInput" type="text" placeholder="e.g. Paid 45 thousand to Sharma Steel today" aria-label="Try a sentence"/>
+        <button class="btn btn-accent" id="tryBtn"><span data-ic="sparkle"></span> See it</button>
       </div>
+      <div class="try-samples" id="trySamples">
+        <button class="sample">Paid 45 thousand to Sharma Steel today</button>
+        <button class="sample">Received 5 lakh booking for a 2BHK from Mr. Patil</button>
+        <button class="sample">Gave 18k salary to the watchman</button>
+        <button class="sample">Spent 1.2 lakh on cement</button>
+      </div>
+      <div class="try-result" id="tryResult"></div>
+      <p class="try-note">This is a quick in-browser preview. The real app uses GPT for far smarter understanding, corrects misheard names, and supports many entries in one sentence.</p>
     </div>
+  </div>
+</section>
+
+<!-- HOW WE CAN HELP -->
+<section class="features" id="help">
+  <div class="wrap">
+    <div class="sec-head reveal">
+      <div class="kicker">How we help</div>
+      <h2>Built for the way a site actually runs</h2>
+      <p>From the first challan to the final profit, BuildKhata keeps the money side simple.</p>
+    </div>
+    <div class="feat-grid">
+      <div class="feat reveal"><div class="ico" data-ic="wallet"></div><h3>Daily site expenses</h3><p>Log steel, cement, tiles, labour and misc as you pay them. No end-of-day data entry.</p></div>
+      <div class="feat reveal" data-d="1"><div class="ico" data-ic="folder"></div><h3>Vendor &amp; GST bills</h3><p>Keep every purchase invoice under its vendor and pull them as one PDF bundle at filing time.</p></div>
+      <div class="feat reveal" data-d="2"><div class="ico" data-ic="home"></div><h3>Bookings &amp; invoices</h3><p>Record unit bookings, raise customer invoices, and see income build up per project.</p></div>
+      <div class="feat reveal"><div class="ico" data-ic="trendUp"></div><h3>Know your profit</h3><p>Income minus land cost and expenses, with a live margin and a simple forward projection.</p></div>
+    </div>
+  </div>
+</section>
+
+<!-- REVIEWS -->
+<section id="reviews">
+  <div class="wrap">
+    <div class="sec-head reveal">
+      <div class="kicker">What builders say</div>
+      <h2>Made for people who build, not spreadsheets</h2>
+      <p>Early feedback from the site.</p>
+    </div>
+    <div class="reviews">
+      <figure class="review reveal">
+        <div class="stars" aria-label="5 out of 5">&#9733;&#9733;&#9733;&#9733;&#9733;</div>
+        <blockquote>I just talk to it after site rounds. By evening my whole day's spend is already sorted by vendor. No more notebook.</blockquote>
+        <figcaption><span class="av">RL</span><span><b>Rajesh L.</b><small>Builder, Pune</small></span></figcaption>
+      </figure>
+      <figure class="review reveal" data-d="1">
+        <div class="stars" aria-label="5 out of 5">&#9733;&#9733;&#9733;&#9733;&#9733;</div>
+        <blockquote>The profit number is the thing. For the first time I can see margin per project without waiting for my CA.</blockquote>
+        <figcaption><span class="av">SK</span><span><b>Sana K.</b><small>Developer, Nagpur</small></span></figcaption>
+      </figure>
+      <figure class="review reveal" data-d="2">
+        <div class="stars" aria-label="5 out of 5">&#9733;&#9733;&#9733;&#9733;&#9733;</div>
+        <blockquote>GST bills were always a mess. Now every bill sits under the vendor and I export them in one click.</blockquote>
+        <figcaption><span class="av">AV</span><span><b>Amit V.</b><small>Contractor, Nashik</small></span></figcaption>
+      </figure>
+    </div>
+    <p class="center muted" style="margin-top:20px;font-size:13px">Illustrative feedback from the prototype trial.</p>
   </div>
 </section>
 
@@ -140,18 +199,18 @@
     <div class="sec-head reveal">
       <div class="kicker">Pricing</div>
       <h2>Honest, builder-friendly pricing</h2>
-      <p>Start free on your own Google Sheet. Upgrade only when it's paying for itself.</p>
+      <p>Start free on your own Google Sheet. Upgrade only when it is paying for itself.</p>
     </div>
     <div class="price-grid">
       <div class="plan reveal">
         <h3>Starter</h3>
-        <div class="amt">₹0<small> /mo</small></div>
+        <div class="amt">&#8377;0<small> /mo</small></div>
         <ul><li>1 project</li><li>Voice &amp; manual entry</li><li>Cashflow dashboard</li><li>Your own Google Sheet</li></ul>
         <a class="btn btn-ghost" href="app.html">Get started</a>
       </div>
       <div class="plan featured reveal" data-d="1">
         <h3>Builder</h3>
-        <div class="amt">₹499<small> /mo</small></div>
+        <div class="amt">&#8377;499<small> /mo</small></div>
         <ul><li>Unlimited projects</li><li>Invoices &amp; GST vault</li><li>Daily email reports</li><li>Reminders &amp; projections</li><li>Android app</li></ul>
         <a class="btn btn-dark" href="app.html">Start free trial</a>
       </div>
@@ -179,7 +238,7 @@
   <div class="cta-band reveal">
     <h2>Your site's money, finally in one place.</h2>
     <p>Set it up in 15 minutes. Speak your first entry today.</p>
-    <a class="btn btn-accent btn-lg" href="app.html">Open BuildKhata →</a>
+    <a class="btn btn-accent btn-lg" href="app.html">Open BuildKhata</a>
   </div>
 </section>
 
@@ -188,20 +247,37 @@
 <!-- FOOTER -->
 <footer>
   <div class="wrap">
-    <div class="foot-grid">
-      <div>
+    <div class="foot-top">
+      <div class="foot-brandcol">
         <a class="brand" href="#top"><img src="assets/icons/icon.svg" alt=""/> BuildKhata</a>
         <p class="muted" style="max-width:34ch;margin:12px 0 0;font-size:14px">A builder's ledger, by voice. Your data stays in your own Google Sheet.</p>
+        <p class="powered-foot"><span data-ic="agent"></span> Powered by GPT</p>
       </div>
-      <div class="foot-links">
-        <a href="#features">Features</a>
-        <a href="#pricing">Pricing</a>
-        <a href="app.html">Sign in</a>
-        <a href="privacy.html">Privacy</a>
-        <a href="terms.html">Terms</a>
+      <div class="foot-cols">
+        <div class="foot-col">
+          <h4>Product</h4>
+          <a href="#features">Features</a>
+          <a href="#try">Try the demo</a>
+          <a href="#pricing">Pricing</a>
+          <a href="app.html">Open app</a>
+        </div>
+        <div class="foot-col">
+          <h4>Company</h4>
+          <a href="#how">How it works</a>
+          <a href="#help">How we help</a>
+          <a href="#reviews">Reviews</a>
+          <a href="#faq">FAQ</a>
+        </div>
+        <div class="foot-col">
+          <h4>Legal</h4>
+          <a href="privacy.html">Privacy</a>
+          <a href="terms.html">Terms</a>
+          <a href="refund.html">Refund &amp; Cancellation</a>
+          <a href="cookies.html">Cookie Policy</a>
+        </div>
       </div>
     </div>
-    <div class="copy">© <span id="yr"></span> BuildKhata. Prototype. Made for a real builder.</div>
+    <div class="copy">&copy; <span id="yr"></span> BuildKhata. Prototype. Made for a real builder.</div>
   </div>
 </footer>
 

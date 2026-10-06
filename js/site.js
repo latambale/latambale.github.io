@@ -1,8 +1,8 @@
-/* site.js — marketing page interactions: nav, scroll reveal, FAQ, demo player. */
+/* site.js — marketing page: nav, scroll reveal, FAQ, icon rendering, interactive demo. */
 (function () {
   var nav = document.getElementById('nav');
   var toggle = document.getElementById('navToggle');
-  document.getElementById('yr').textContent = new Date().getFullYear();
+  var yr = document.getElementById('yr'); if (yr) yr.textContent = new Date().getFullYear();
 
   // render custom SVG icons into [data-ic] placeholders (no emoji in the brand)
   if (window.BK && BK.icon) {
@@ -11,7 +11,7 @@
     });
   }
 
-  // sticky nav style on scroll
+  // sticky nav on scroll
   function onScroll() { nav.classList.toggle('scrolled', window.scrollY > 10); }
   window.addEventListener('scroll', onScroll, { passive: true }); onScroll();
 
@@ -27,16 +27,16 @@
   }, { threshold: 0.12 });
   document.querySelectorAll('.reveal:not(.in)').forEach(function (el) { io.observe(el); });
 
-  // FAQ (built from data; keeps HTML lean)
+  // FAQ
   var faqs = [
-    ['Do I need to know accounting?', 'No. You speak or type plain sentences like “paid 20 thousand to the cement vendor”. BuildKhata figures out the rest and you just confirm.'],
+    ['Do I need to know accounting?', 'No. You speak or type plain sentences like "paid 20 thousand to the cement vendor" and BuildKhata figures out the rest. You just confirm.'],
+    ['Is it really powered by GPT?', 'Yes. Your sentence is sent to OpenAI GPT through a secure backend to extract the amount, vendor, category and date. It even corrects misheard names and handles several entries in one sentence.'],
     ['Where is my data stored?', 'In your own Google Sheet. BuildKhata reads and writes it through a secure Google Apps Script backend, with no third-party database.'],
-    ['Does voice work offline?', 'Voice uses your device + an AI service, so it needs internet. You can always type an entry instead.'],
     ['Can I track more than one project?', 'Yes. Add as many projects as you like; each has its own cashflow, land cost and reports.'],
-    ['Is my OpenAI/email key safe?', 'Keys never touch the browser or the app. They live only in your Apps Script settings on the server side.']
+    ['Is my data and keys safe?', 'API keys never touch the browser or the app. They live only in your server settings. Your sign-in uses a short-lived signed token.']
   ];
   var list = document.getElementById('faqList');
-  faqs.forEach(function (f, i) {
+  if (list) faqs.forEach(function (f) {
     var d = document.createElement('div');
     d.className = 'reveal';
     d.style.cssText = 'border-bottom:1px solid var(--line);padding:18px 0;cursor:pointer';
@@ -51,47 +51,106 @@
       a.style.marginTop = open ? '0' : '10px';
       p.style.transform = open ? 'none' : 'rotate(45deg)';
     });
-    list.appendChild(d);
-    io.observe(d);
+    list.appendChild(d); io.observe(d);
   });
 
-  // demo player — scripted sentences typing + chips
-  var script = [
-    { text: 'Paid 45 thousand to Sharma Steel today.', chips: [['Expense', 'exp'], ['Steel'], ['Sharma Steel'], ['₹45,000', 'amt']] },
-    { text: 'Gave 18 thousand to the watchman as salary.', chips: [['Expense', 'exp'], ['Salary · Watchmen'], ['₹18,000', 'amt']] },
-    { text: 'Received 5 lakh booking for a 2BHK from Mr. Patil.', chips: [['Income'], ['Booking · 2BHK'], ['Mr. Patil'], ['₹5,00,000', 'amt']] },
-    { text: 'Spent 12 thousand on tiles labour.', chips: [['Expense', 'exp'], ['Tiles - Labour'], ['₹12,000', 'amt']] }
-  ];
-  var said = document.getElementById('demoSaid'), chipsEl = document.getElementById('demoChips');
-  var btn = document.getElementById('demoPlay'), playing = false;
+  /* ---------------- interactive "try it" demo (local heuristic preview) ---------------- */
+  var input = document.getElementById('tryInput');
+  var tryBtn = document.getElementById('tryBtn');
+  var result = document.getElementById('tryResult');
+  var samples = document.getElementById('trySamples');
 
-  function type(str, done) {
-    said.textContent = ''; var i = 0;
-    (function tick() {
-      if (i <= str.length) { said.textContent = '“' + str.slice(0, i) + '”'; i++; setTimeout(tick, 26); }
-      else done();
-    })();
+  function money(n) { try { return '₹' + Math.round(n).toLocaleString('en-IN'); } catch (e) { return '₹' + Math.round(n); } }
+  function esc(s) { return String(s == null ? '' : s).replace(/[&<>"]/g, function (c) { return ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]; }); }
+  function titleCase(s) { return s.replace(/\s+/g, ' ').trim().replace(/\b\w/g, function (c) { return c.toUpperCase(); }); }
+
+  var MATERIALS = [
+    [/steel|sariya|tmt/, 'Steel'], [/cement/, 'Cement'], [/brick|bricks/, 'Bricks'],
+    [/tiles?/, 'Tiles - Material'], [/plumb/, 'Plumbing - Material'], [/electric/, 'Electrical - Material'],
+    [/lift/, 'Lifts'], [/door/, 'Doors - Material'], [/window/, 'Windows - Material'], [/fabricat/, 'Fabrication'],
+    [/sand|aggregate|gravel/, 'Misc'], [/paint/, 'Misc']
+  ];
+  var ROLES = [[/watchman|guard|chowkidar/, 'Watchmen'], [/consultant/, 'Consultants'], [/\bca\b|chartered/, 'CA'], [/tally/, 'Tally Guys'], [/labour|labor|mazdoor|mistri/, 'Labour']];
+
+  function demoParse(raw) {
+    var text = String(raw || '').trim(); if (!text) return null;
+    var low = text.toLowerCase();
+
+    // amount + scale
+    var amount = 0;
+    var re = /(\d+(?:[.,]\d+)?)\s*(crore|cr|lakhs?|lac|thousand|hazaar|k)?/g, m, best = null;
+    while ((m = re.exec(low)) !== null) {
+      if (!m[1]) continue;
+      var base = parseFloat(m[1].replace(/,/g, '')); if (!isFinite(base)) continue;
+      var scale = m[2] || '';
+      var mult = /crore|cr/.test(scale) ? 1e7 : /lakh|lac/.test(scale) ? 1e5 : /thousand|hazaar|k/.test(scale) ? 1e3 : 1;
+      var val = base * mult;
+      if (!best || (scale && !best.scale) || val > best.val) best = { val: val, scale: scale };
+    }
+    if (best) amount = best.val;
+
+    // in / out
+    var income = /receiv|booking|sold|sale|got|advance|collect|payment from/.test(low);
+    var expense = /paid|gave|bought|spent|purchase|salary|wage|give/.test(low);
+    var type = income && !expense ? 'INCOME' : 'EXPENSE';
+
+    // category + subCategory
+    var category = type === 'INCOME' ? 'Booking' : 'Vendor', sub = '';
+    var bhk = low.match(/(\d)\s*bhk/);
+    if (type === 'INCOME' || /booking|flat|unit|bhk/.test(low)) { category = 'Booking'; sub = bhk ? (bhk[1] + 'BHK') : (/flat|unit/.test(low) ? 'Unit' : '2BHK'); type = 'INCOME'; }
+    else if (/challan|sanction|government|govt/.test(low)) { category = 'Challan / Sanction'; sub = ''; }
+    else {
+      var role = ROLES.find(function (r) { return r[0].test(low); });
+      if (role || /salary|wage/.test(low)) { category = 'Salary'; sub = role ? role[1] : 'Staff'; }
+      else {
+        var mat = MATERIALS.find(function (r) { return r[0].test(low); });
+        if (mat) { category = 'Vendor'; sub = mat[1]; }
+        else { category = /misc|other/.test(low) ? 'Miscellaneous' : 'Vendor'; sub = ''; }
+      }
+    }
+
+    // vendor / party name: after "to" or "from"
+    var vendor = '';
+    var vm = text.match(/\b(?:to|from)\s+([A-Za-z][A-Za-z0-9 .&'-]*?)(?=\s+\d|\s+today|\s+yesterday|\s+tomorrow|[.,]|$)/i);
+    if (vm) vendor = titleCase(vm[1]);
+    if (!vendor && sub && category === 'Salary') vendor = sub;
+
+    // date
+    var dateLabel = 'Today';
+    if (/yesterday/.test(low)) dateLabel = 'Yesterday';
+    else if (/tomorrow/.test(low)) dateLabel = 'Tomorrow';
+
+    return { type: type, category: category, sub: sub, vendor: vendor, amount: amount, dateLabel: dateLabel };
   }
-  function showChips(chips) {
-    chipsEl.innerHTML = '';
-    chips.forEach(function (c, k) {
-      var s = document.createElement('span');
-      s.className = 'chip ' + (c[1] || '');
-      s.textContent = c[0];
-      s.style.cssText = 'opacity:0;transform:translateY(6px);transition:.3s ' + (k * 0.08) + 's';
-      chipsEl.appendChild(s);
-      requestAnimationFrame(function () { s.style.opacity = 1; s.style.transform = 'none'; });
+
+  function renderParsed(p) {
+    if (!p) return;
+    var out = p.type === 'EXPENSE';
+    var title = p.vendor || p.sub || p.category;
+    var chips = [];
+    chips.push('<span class="chip ' + (out ? 'exp' : '') + '">' + (out ? 'Expense' : 'Income') + '</span>');
+    if (p.sub) chips.push('<span class="chip">' + esc(p.sub) + '</span>');
+    else chips.push('<span class="chip">' + esc(p.category) + '</span>');
+    if (p.vendor) chips.push('<span class="chip">' + esc(p.vendor) + '</span>');
+    chips.push('<span class="chip">' + esc(p.dateLabel) + '</span>');
+    if (p.amount > 0) chips.push('<span class="chip amt">' + money(p.amount) + '</span>');
+    result.innerHTML =
+      '<div class="pcard"><div class="prow"><div><div class="pt">' + esc(title) + '</div>' +
+      '<div class="psub">' + esc(p.category) + (p.amount > 0 ? '' : ' &middot; add an amount to log') + '</div></div>' +
+      (p.amount > 0 ? '<div class="pamt ' + (out ? 'out' : 'in') + '">' + (out ? '− ' : '+ ') + money(p.amount) + '</div>' : '') +
+      '</div><div class="pchips">' + chips.join('') + '</div></div>';
+  }
+
+  function run() { var p = demoParse(input.value); if (!p) { input.focus(); return; } renderParsed(p); }
+
+  if (input && tryBtn && result) {
+    tryBtn.addEventListener('click', run);
+    input.addEventListener('keydown', function (e) { if (e.key === 'Enter') run(); });
+    if (samples) samples.addEventListener('click', function (e) {
+      var b = e.target.closest('.sample'); if (!b) return;
+      input.value = b.textContent; run(); input.scrollIntoView({ block: 'nearest' });
     });
+    // seed with the first sample so the section never looks empty
+    input.value = 'Paid 45 thousand to Sharma Steel today'; run();
   }
-  function play() {
-    if (playing) return; playing = true; btn.textContent = '▶ Playing…'; btn.disabled = true;
-    var idx = 0;
-    (function next() {
-      if (idx >= script.length) { playing = false; btn.textContent = '▶ Play again'; btn.disabled = false; return; }
-      var step = script[idx++];
-      chipsEl.innerHTML = '';
-      type(step.text, function () { showChips(step.chips); setTimeout(next, 1500); });
-    })();
-  }
-  btn.addEventListener('click', play);
 })();
