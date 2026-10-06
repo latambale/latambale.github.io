@@ -42,7 +42,9 @@
     wallet: '<rect x="3.5" y="6" width="17" height="13" rx="2.5"/><path d="M3.5 10h17M16 14h1.5"/>',
     arrowUp: '<path d="M12 19V6M6 12l6-6 6 6"/>',
     arrowDown: '<path d="M12 5v13M6 12l6 6 6-6"/>',
-    hardhat: '<path d="M4 16a8 8 0 0 1 16 0"/><path d="M12 5a3 3 0 0 1 3 3v2M12 5a3 3 0 0 0-3 3v2M3 16h18v2H3z"/>'
+    hardhat: '<path d="M4 16a8 8 0 0 1 16 0"/><path d="M12 5a3 3 0 0 1 3 3v2M12 5a3 3 0 0 0-3 3v2M3 16h18v2H3z"/>',
+    // custom BuildKhata assistant mark: a chat bubble holding a voice waveform
+    agent: '<path d="M20 11.3a7.3 7.3 0 0 1-7.3 7.3c-1.15 0-2.23-.26-3.2-.72L4 19.3l1.45-4.1A7.3 7.3 0 1 1 20 11.3z"/><path d="M9.3 10v2.6M12.5 8.5v5.6M15.7 10v2.6"/>'
   };
 
   BK.icon = function (name, opts) {

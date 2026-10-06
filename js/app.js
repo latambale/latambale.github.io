@@ -342,13 +342,19 @@
     var el=$('#assistant');if(!el)return;
     el.innerHTML=
       '<div class="assist-dock">'+
-        '<button class="assist-btn chat-btn" id="chatToggle" aria-label="Open assistant">'+I('sparkle')+'</button>'+
+        '<button class="assist-btn chat-btn" id="chatToggle" aria-label="Open AI Agent">'+I('agent')+'</button>'+
       '</div>'+
       '<div class="chat-panel hide" id="chatPanel">'+
-        '<div class="chat-h"><span class="chat-title">'+I('sparkle')+' Assistant</span><button class="btn-icon" id="chatClose" aria-label="Close">'+I('close')+'</button></div>'+
+        '<div class="chat-h"><span class="chat-title">'+I('agent')+' AI Agent</span><button class="btn-icon" id="chatClose" aria-label="Close">'+I('close')+'</button></div>'+
         '<div class="chat-msgs" id="chatMsgs"></div>'+
+        '<div class="chat-quick" id="chatQuick">'+
+          '<button class="qchip" data-q="todayOut">Today\'s spend</button>'+
+          '<button class="qchip" data-q="todayIn">Today\'s income</button>'+
+          '<button class="qchip" data-q="month">This month</button>'+
+          '<button class="qchip" data-q="rem">Open reminders</button>'+
+        '</div>'+
         '<div class="chat-in"><input id="chatText" placeholder="Type, or click the mic to speak" autocomplete="off"/>'+
-          '<button class="btn-icon chat-mic" id="chatMic" aria-label="Hold to speak">'+I('mic')+'</button>'+
+          '<button class="btn-icon chat-mic" id="chatMic" aria-label="Click to speak">'+I('mic')+'</button>'+
           '<button class="btn-icon chat-send" id="chatSend" aria-label="Send">'+I('chevronRight')+'</button></div>'+
       '</div>';
     bindClickMic($('#chatMic'),$('#chatText')); // desktop: click to toggle, transcribes into the box
@@ -356,11 +362,34 @@
     $('#chatClose').onclick=chatBot.close;
     $('#chatSend').onclick=function(){var t=$('#chatText').value.trim();if(!t)return;$('#chatText').value='';handleUtterance(t);};
     $('#chatText').addEventListener('keydown',function(e){if(e.key==='Enter'){e.preventDefault();$('#chatSend').click();}});
+    $all('.qchip',$('#chatPanel')).forEach(function(b){b.onclick=function(){quickQuery(b.getAttribute('data-q'));};});
+  }
+  // instant answers computed from loaded data (no AI round-trip)
+  function quickQuery(type){
+    chatBot.show();
+    var labels={todayOut:"Today's spend",todayIn:"Today's income",month:"This month",rem:"Open reminders"};
+    chatBot.push('user',labels[type]||'Query');chatBot.thinking(true);
+    loadTx().then(function(tx){
+      var today=todayStr(),m=monthKey(today);
+      function sum(pred){return tx.reduce(function(s,t){return pred(t)?s+(Number(t.amount)||0):s;},0);}
+      if(type==='rem'){
+        return api('listReminders',{projectId:S.projectId}).then(function(d){chatBot.thinking(false);
+          var open=(d.reminders||[]).filter(function(r){return r.status==='open';});
+          if(!open.length){chatBot.push('bot','No open reminders. You are all caught up.');return;}
+          var next=open.slice().sort(function(a,b){return String(a.dueDate).localeCompare(String(b.dueDate));})[0];
+          chatBot.push('bot',open.length+' open reminder'+(open.length>1?'s':'')+'. Next: '+next.title+' on '+fmtDate(next.dueDate)+(Number(next.amount)>0?' ('+money(next.amount)+')':'')+'.');});
+      }
+      var msg='';
+      if(type==='todayOut'){var o=sum(function(t){return t.type==='EXPENSE'&&t.category!=='LAND'&&String(t.date).slice(0,10)===today;});msg='You have spent '+money(o)+' today.';}
+      else if(type==='todayIn'){var i=sum(function(t){return t.type==='INCOME'&&String(t.date).slice(0,10)===today;});msg='Income received today: '+money(i)+'.';}
+      else if(type==='month'){var mi=sum(function(t){return t.type==='INCOME'&&monthKey(t.date)===m;});var me=sum(function(t){return t.type==='EXPENSE'&&t.category!=='LAND'&&monthKey(t.date)===m;});msg='This month: '+money(mi)+' in, '+money(me)+' out. Net '+money(mi-me)+'.';}
+      chatBot.thinking(false);chatBot.push('bot',msg);
+    }).catch(function(e){chatBot.thinking(false);chatBot.push('bot',errMsg(e));});
   }
   var chatBot={
     open:false,
     toggle:function(){chatBot.open?chatBot.close():chatBot.show();},
-    show:function(){var p=$('#chatPanel');if(!p)return;p.classList.remove('hide');chatBot.open=true;var m=$('#chatMsgs');if(m&&!m.children.length)chatBot.push('bot','Hi. Tell me what you paid or earned, or ask me to set the land cost, add a reminder, create a project, and more.');setTimeout(function(){var i=$('#chatText');i&&i.focus();},60);},
+    show:function(){var p=$('#chatPanel');if(!p)return;p.classList.remove('hide');chatBot.open=true;var m=$('#chatMsgs');if(m&&!m.children.length)chatBot.push('bot','Hi, I am your BuildKhata AI Agent. Tell me what you paid or earned, ask me to set the land cost or add a reminder, or tap a quick question below.');setTimeout(function(){var i=$('#chatText');i&&i.focus();},60);},
     close:function(){var p=$('#chatPanel');if(p)p.classList.add('hide');chatBot.open=false;},
     push:function(who,text){var m=$('#chatMsgs');if(!m||!text)return;m.appendChild(h('<div class="msg '+who+'">'+esc(text)+'</div>'));m.scrollTop=m.scrollHeight;},
     thinking:function(on){var m=$('#chatMsgs');if(!m)return;var t=$('#chatThink');if(on){if(!t){m.appendChild(h('<div class="msg bot thinking" id="chatThink"><span class="dots"><i></i><i></i><i></i></span></div>'));m.scrollTop=m.scrollHeight;}}else if(t)t.remove();}
