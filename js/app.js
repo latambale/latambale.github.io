@@ -23,6 +23,7 @@
   function monthLabel(ym){try{var p=ym.split('-');return new Date(p[0],p[1]-1,1).toLocaleDateString('en-IN',{month:'short',year:'numeric'});}catch(e){return ym;}}
   function addMonths(ym,n){var p=ym.split('-');var d=new Date(Number(p[0]),Number(p[1])-1+n,1);return d.getFullYear()+'-'+p2(d.getMonth()+1);}
   function daysAgo(n){var d=new Date();d.setDate(d.getDate()-n);return d.toISOString().slice(0,10);}
+  function rangeFromDays(n){return {from:daysAgo(n),to:todayStr()};}
 
   /* ---------- state ---------- */
   var S={user:null,route:'dashboard',projects:[],projectId:null,lookups:null,features:{ai:true,email:false},
@@ -36,7 +37,7 @@
   var CAT={BOOKING:{label:'Booking',lookup:'INVENTORY_TYPE'},VENDOR:{label:'Vendor',lookup:'VENDOR_TYPE'},
     SALARY:{label:'Salary',lookup:'SALARY_ROLE'},MISC:{label:'Miscellaneous',lookup:'MISC_TYPE'},
     LAND:{label:'Land cost',lookup:null},CHALLAN:{label:'Challan / Sanction',lookup:null}};
-  var NAV=[['dashboard','Dashboard','dashboard'],['ledger','Ledger','ledger'],
+  var NAV=[['dashboard','Dashboard','dashboard'],['ledger','Transactions','ledger'],
     ['bookings','Bookings','home'],['vendors','Vendors','cube'],['invoices','Invoices','doc'],
     ['gst','GST invoices','folder'],['reminders','Reminders','bell']];
 
@@ -128,7 +129,7 @@
   function tabbar(){
     function t(id,label,icon){return '<button class="tab" data-go="'+id+'">'+I(icon)+'<span>'+label+'</span></button>';}
     return '<nav class="tabbar" id="tabbar">'+
-      t('dashboard','Home','dashboard')+t('ledger','Ledger','ledger')+
+      t('dashboard','Home','dashboard')+t('ledger','Txns','ledger')+
       '<button class="tab center" id="micTab" aria-label="Hold to speak"><span class="fab">'+I('mic')+'</span></button>'+
       t('reminders','Reminders','bell')+t('more','More','more')+'</nav>';
   }
@@ -161,36 +162,36 @@
   /* ======================= DASHBOARD (client-side) ======================= */
   var chartTrend,chartPie;
   function destroyCharts(){[chartTrend,chartPie].forEach(function(c){try{c&&c.destroy();}catch(e){}});chartTrend=chartPie=null;}
-  var dashRange={mode:'90',from:'',to:''};
   function viewDashboard(v,mySeq){
     v.innerHTML=pageHead('Dashboard',curProject().name||'',
       '<button class="btn btn-ghost btn-sm" id="dlReport">'+I('download')+' Export PDF</button>'+
       '<button class="btn btn-ghost btn-sm" id="emReport">'+I('mail')+' Email report</button>')+
       '<div class="kpis" id="kpis">'+kpiSkel()+'</div>'+
-      '<div class="card" style="margin-top:16px"><div class="card-h"><h3>Cashflow</h3>'+
-        '<div class="daterange"><span class="seg" id="rangeSeg">'+
-        '<button data-r="30">30D</button><button data-r="90" class="on">90D</button><button data-r="365">1Y</button><button data-r="0">All</button><button data-r="custom">Custom</button></span>'+
-        '<span id="customRange" class="hide"><input type="date" id="rFrom"/><input type="date" id="rTo"/><button class="btn btn-primary btn-sm" id="rApply">Apply</button></span>'+
-        '</div></div><div class="chart-box"><canvas id="trendC"></canvas></div></div>'+
+      '<div class="card" style="margin-top:16px">'+
+        '<div class="card-h"><h3>Cashflow</h3></div>'+
+        '<div class="range-bar">'+
+          '<span class="seg" id="rangeSeg"><button data-r="30">30D</button><button data-r="90" class="on">90D</button><button data-r="365">1Y</button><button data-r="0">All</button></span>'+
+          '<span class="range-dates"><input type="date" id="rFrom" aria-label="From date"/><span class="rto">to</span><input type="date" id="rTo" aria-label="To date"/></span>'+
+        '</div>'+
+        '<div class="chart-box"><canvas id="trendC"></canvas></div></div>'+
       '<div class="dash-grid">'+
         '<div class="card"><div class="card-h"><h3>Where the money went</h3></div><div class="chart-box" style="height:230px"><canvas id="pieC"></canvas></div><div class="legend" id="pieLegend"></div></div>'+
         '<div class="card"><div class="card-h"><h3>Projection</h3><span class="sub">from this month</span></div><div id="projBox"></div></div>'+
       '</div>';
     $('#dlReport').onclick=exportReportPdf;$('#emReport').onclick=emailReportFlow;
+    // default 90D, with the date inputs already filled to match (no hide/show, no layout shift)
+    var def=rangeFromDays(90);$('#rFrom').value=def.from;$('#rTo').value=def.to;
     $('#rangeSeg').addEventListener('click',function(e){var b=e.target.closest('button');if(!b)return;
       $all('#rangeSeg button').forEach(function(x){x.classList.remove('on');});b.classList.add('on');
-      var r=b.getAttribute('data-r');
-      if(r==='custom'){$('#customRange').classList.remove('hide');$('#rFrom').value=dashRange.from||daysAgo(30);$('#rTo').value=dashRange.to||todayStr();return;}
-      $('#customRange').classList.add('hide');dashRange={mode:r,from:'',to:''};renderDash(mySeq);});
-    $('#rApply').onclick=function(){dashRange={mode:'custom',from:$('#rFrom').value,to:$('#rTo').value};renderDash(mySeq);};
+      var r=Number(b.getAttribute('data-r'));
+      if(r===0){$('#rFrom').value='';$('#rTo').value='';}else{var rg=rangeFromDays(r);$('#rFrom').value=rg.from;$('#rTo').value=rg.to;}
+      renderDash(mySeq);});
+    function onDate(){$all('#rangeSeg button').forEach(function(x){x.classList.remove('on');});renderDash(mySeq);}
+    $('#rFrom').addEventListener('change',onDate);$('#rTo').addEventListener('change',onDate);
     loadTx().then(function(){if(alive(mySeq))renderDash(mySeq);}).catch(function(e){toast(errMsg(e),'err');});
   }
   function kpiSkel(){return '<div class="skeleton" style="height:92px"></div>'.repeat(4);}
-  function rangeBounds(){
-    if(dashRange.mode==='custom')return{from:dashRange.from||'',to:dashRange.to||''};
-    if(dashRange.mode==='0')return{from:'',to:''};
-    return{from:daysAgo(Number(dashRange.mode)),to:todayStr()};
-  }
+  function rangeBounds(){var f=$('#rFrom'),t=$('#rTo');return{from:f?f.value:'',to:t?t.value:''};}
   function renderDash(mySeq){
     if(!alive(mySeq))return;
     var b=rangeBounds();var s=computeSummary(S.tx||[],Number(curProject().landCost)||0,b.from,b.to);
@@ -271,7 +272,7 @@
     api('interpretBatch',{text:text,projectId:S.projectId}).then(function(d){
       chatBot.thinking(false);hideVoiceOverlay();
       var items=d.items||[];
-      if(!items.length){toast('I could not find an action in that.','err');chatBot.push('bot','I could not find an action. Try rephrasing, or use manual entry.');return;}
+      if(!items.length){toast("I can't help with that",'err');chatBot.push('bot',"Sorry, I can only help with your project's money, reminders and reports. I'm not able to do that.");return;}
       if(items.length===1){dispatchIntent(items[0],text);}
       else{showBatchReview(items);}
     }).catch(function(e){chatBot.thinking(false);hideVoiceOverlay();
@@ -296,8 +297,39 @@
       var kind={ADD_VENDOR_TYPE:'VENDOR_TYPE',ADD_SALARY_ROLE:'SALARY_ROLE',ADD_UNIT_TYPE:'INVENTORY_TYPE'}[r.intent];
       return commandConfirm('New '+kindLabel(kind),'Add "'+esc(d.name||'')+'"?',function(){return api('createLookup',{kind:kind,name:d.name,projectId:S.projectId}).then(loadLookups);},'Added');}
     if(r.intent==='SET_DAILY_REPORT'){go('settings');toast('Configure the daily report below');return;}
-    toast('Not sure what to do with that. Try manual entry.','err');
-    manualConfirm(rawText);
+    if(r.intent==='SEND_REPORT'){return doSendReport(d);}
+    if(r.intent==='QUERY'){return doQuery(d);}
+    // off-topic or not understood: generic refusal (the AI is scoped to this CRM only)
+    chatBot.push('bot',"Sorry, I can only help with your project's money, reminders and reports. I'm not able to do that.");
+    toast("I can't help with that",'err');
+  }
+  function doSendReport(d){
+    if(!S.features.email){chatBot.push('bot','Email reports are off. Add a Resend key on the server to enable them.');toast('Email is off','err');return;}
+    var to=(S.user&&S.user.email)||'';
+    if(!to){chatBot.push('bot','I do not have an email to send to.');return;}
+    var period=(d&&d.period)||'today',from='',until=todayStr(),label='today';
+    if(period==='today'){from=todayStr();label='today';}
+    else if(period==='yesterday'){from=daysAgo(1);until=daysAgo(1);label='yesterday';}
+    else if(period==='this_week'){from=daysAgo(7);label='the last 7 days';}
+    else if(period==='this_month'){var d2=new Date();from=d2.getFullYear()+'-'+p2(d2.getMonth()+1)+'-01';label='this month';}
+    else if(period==='all'){from='';until='';label='all time';}
+    chatBot.thinking(true);
+    api('sendReportNow',{projectId:S.projectId,to:to,from:from,until:until}).then(function(){chatBot.thinking(false);chatBot.push('bot','Done. I emailed the '+label+' report to '+to+'.');toast('Report sent','ok');})
+      .catch(function(e){chatBot.thinking(false);chatBot.push('bot',errMsg(e));toast(errMsg(e),'err');});
+  }
+  function doQuery(d){
+    var map={today_expense:'todayOut',today_income:'todayIn',this_month:'month',month:'month',open_reminders:'rem',reminders:'rem'};
+    var metric=d&&d.metric;
+    if(map[metric])return quickQuery(map[metric]);
+    if(metric==='profit'||metric==='margin'){
+      chatBot.thinking(true);
+      return loadTx().then(function(tx){chatBot.thinking(false);
+        var ti=0,te=0;tx.forEach(function(t){var a=Number(t.amount)||0;if(t.type==='INCOME')ti+=a;else if(t.type==='EXPENSE'&&t.category!=='LAND')te+=a;});
+        var land=Number(curProject().landCost)||0,profit=ti-(land+te);
+        chatBot.push('bot','Profit so far: '+money(profit)+' ('+(ti>0?Math.round(profit/ti*100):0)+'% margin). Income '+money(ti)+', land '+money(land)+', expenses '+money(te)+'.');
+      }).catch(function(e){chatBot.thinking(false);chatBot.push('bot',errMsg(e));});
+    }
+    chatBot.push('bot',"I can tell you today's spend or income, this month's numbers, your profit, or open reminders.");
   }
   function manualConfirm(text){showTxConfirm({type:'EXPENSE',category:'VENDOR',subCategory:'',vendorName:'',amount:0,date:todayStr(),note:text||''},text||'',false,1);}
 
@@ -538,9 +570,12 @@
   /* ======================= LEDGER (monthly) ======================= */
   var ledFilter='all',ledFrom='',ledTo='';
   function viewLedger(v,mySeq){
-    v.innerHTML=pageHead('Ledger',curProject().name||'')+
-      '<div class="card"><div class="card-h"><span class="seg" id="ledSeg"><button data-f="all" class="'+(ledFilter==='all'?'on':'')+'">All</button><button data-f="INCOME" class="'+(ledFilter==='INCOME'?'on':'')+'">In</button><button data-f="EXPENSE" class="'+(ledFilter==='EXPENSE'?'on':'')+'">Out</button></span>'+
-        '<span class="daterange"><input type="date" id="lFrom" value="'+ledFrom+'"/><input type="date" id="lTo" value="'+ledTo+'"/><button class="btn btn-ghost btn-sm" id="lClear">Clear</button></span></div>'+
+    v.innerHTML=pageHead('Transactions',curProject().name||'')+
+      '<div class="card">'+
+        '<div class="range-bar">'+
+          '<span class="seg" id="ledSeg"><button data-f="all" class="'+(ledFilter==='all'?'on':'')+'">All</button><button data-f="INCOME" class="'+(ledFilter==='INCOME'?'on':'')+'">In</button><button data-f="EXPENSE" class="'+(ledFilter==='EXPENSE'?'on':'')+'">Out</button></span>'+
+          '<span class="range-dates"><input type="date" id="lFrom" aria-label="From date" value="'+ledFrom+'"/><span class="rto">to</span><input type="date" id="lTo" aria-label="To date" value="'+ledTo+'"/><button class="btn btn-ghost btn-sm" id="lClear">Clear</button></span>'+
+        '</div>'+
         '<div id="txList"><div class="skeleton" style="height:220px"></div></div></div>';
     $('#ledSeg').addEventListener('click',function(e){var b=e.target.closest('button');if(!b)return;$all('#ledSeg button').forEach(function(x){x.classList.remove('on');});b.classList.add('on');ledFilter=b.getAttribute('data-f');paint();});
     $('#lFrom').onchange=function(){ledFrom=this.value;paint();};$('#lTo').onchange=function(){ledTo=this.value;paint();};
@@ -744,6 +779,11 @@
       '<div class="card"><div class="card-h"><h3>Categories</h3><span class="sub">Add your own types</span></div>'+
         '<div class="row2"><button class="btn btn-ghost btn-sm" data-add="VENDOR_TYPE">'+I('plus')+' Vendor type</button><button class="btn btn-ghost btn-sm" data-add="SALARY_ROLE">'+I('plus')+' Salary role</button></div>'+
         '<div class="row2" style="margin-top:8px"><button class="btn btn-ghost btn-sm" data-add="INVENTORY_TYPE">'+I('plus')+' Unit type</button><button class="btn btn-ghost btn-sm" data-add="MISC_TYPE">'+I('plus')+' Misc type</button></div></div>'+
+      '<div class="card"><div class="card-h"><h3>Voice language</h3><span class="sub">for speaking entries</span></div>'+
+        '<div class="field"><label>Recognise my voice in</label><select id="langSel">'+
+        [['en-IN','English (India)'],['hi-IN','Hindi'],['mr-IN','Marathi'],['gu-IN','Gujarati'],['bn-IN','Bengali'],['ta-IN','Tamil'],['te-IN','Telugu'],['kn-IN','Kannada'],['pa-IN','Punjabi'],['en-US','English (US)']]
+          .map(function(l){var cur='en-IN';try{cur=localStorage.getItem('bk_lang')||'en-IN';}catch(e){}return '<option value="'+l[0]+'"'+(cur===l[0]?' selected':'')+'>'+l[1]+'</option>';}).join('')+
+        '</select></div><p class="muted" style="font-size:12.5px;margin-top:-4px">Speak in this language. The AI also understands mixed language (for example Hinglish).</p></div>'+
       '<div class="card"><div class="card-h"><h3>Daily email report</h3></div>'+
         (S.features.email?'':'<p class="muted" style="font-size:13px;margin-top:-8px">Add a Resend key on the server to enable email.</p>')+
         '<div class="field"><label>Send to</label><input id="rEmail" type="email" value="'+esc(S.user?S.user.email:'')+'"/></div>'+
@@ -753,6 +793,7 @@
         '<button class="btn btn-danger" id="lo">'+I('logout')+' Log out</button></div>';
     if(S.projectId)$('#pSave').onclick=function(){api('updateProject',{id:S.projectId,name:$('#pName').value.trim(),landCost:Number($('#pLand').value)||0}).then(function(d){S.projects=S.projects.map(function(x){return x.id===d.project.id?d.project:x;});toast('Saved','ok');syncProjSel();}).catch(function(e){toast(errMsg(e),'err');});};
     $('#newProj').onclick=openProjectSheet;
+    $('#langSel').onchange=function(){try{localStorage.setItem('bk_lang',this.value);}catch(e){}toast('Voice language set','ok');};
     $all('[data-add]').forEach(function(b){b.onclick=function(){addLookupPrompt(b.getAttribute('data-add'),null);};});
     $('#rEnable').onclick=function(){api('configureDailyReport',{enabled:true,email:$('#rEmail').value.trim(),hour:Number($('#rHour').value)}).then(function(){toast('Daily report enabled','ok');}).catch(function(e){toast(errMsg(e),'err');});};
     $('#lo').onclick=logout;

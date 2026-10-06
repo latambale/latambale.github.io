@@ -20,7 +20,9 @@
 
       function makeRec() {
         var rec = new SR();
-        rec.lang = 'en-IN';
+        var lang = 'en-IN';
+        try { lang = localStorage.getItem('bk_lang') || 'en-IN'; } catch (e) {}
+        rec.lang = lang;
         rec.interimResults = true;
         rec.continuous = true;
         rec.maxAlternatives = 1;

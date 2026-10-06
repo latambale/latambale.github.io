@@ -210,8 +210,12 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
 .mic-fab{width:58px;height:58px;border-radius:50%;background:var(--ink);color:#fff;touch-action:none}
 .mic-fab .ic{width:25px;height:25px}
 .mic-fab.rec{background:var(--neg);animation:rec 1.3s infinite}
-.chat-btn{width:46px;height:46px;border-radius:50%;background:var(--card);color:var(--ink);border:1px solid var(--line-2)}
-.chat-btn .ic{width:20px;height:20px;color:var(--accent)}
+/* AI Agent launcher: black, larger, with a living glow */
+.chat-btn{width:62px;height:62px;border-radius:50%;background:var(--ink);color:#fff;border:0;position:relative;box-shadow:0 12px 30px rgba(10,10,11,.34)}
+.chat-btn .ic{width:28px;height:28px;color:#fff;position:relative;z-index:1}
+.chat-btn:after{content:"";position:absolute;inset:0;border-radius:50%;box-shadow:0 0 0 0 rgba(79,124,240,.5);animation:aiPulse 2.6s ease-out infinite}
+.chat-btn:hover{transform:scale(1.06);box-shadow:0 14px 34px rgba(10,10,11,.4),0 0 22px rgba(79,124,240,.45)}
+@keyframes aiPulse{0%{box-shadow:0 0 0 0 rgba(79,124,240,.45)}70%{box-shadow:0 0 0 13px rgba(79,124,240,0)}100%{box-shadow:0 0 0 0 rgba(79,124,240,0)}}
 
 .chat-panel{position:fixed;right:26px;bottom:98px;z-index:91;width:366px;max-width:calc(100vw - 40px);height:468px;max-height:72vh;
   background:var(--card);border:1px solid var(--line);border-radius:var(--r-lg);box-shadow:var(--sh-3);display:flex;flex-direction:column;overflow:hidden;animation:pop .26s var(--ez)}
@@ -238,12 +242,28 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
 /* ---------- voice overlay (hold-to-talk popup) ---------- */
 #voiceOverlay{position:fixed;inset:0;z-index:150;display:grid;place-items:center;background:rgba(10,10,11,.55);backdrop-filter:blur(3px);animation:fade .2s}
 .vo-card{background:var(--card);border-radius:var(--r-lg);padding:30px 26px;width:min(420px,88vw);text-align:center;box-shadow:var(--sh-3);animation:pop .25s var(--ez)}
-.vo-mic{width:86px;height:86px;border-radius:50%;background:var(--neg);color:#fff;display:grid;place-items:center;margin:0 auto 16px;animation:rec 1.3s infinite}
-.vo-mic .ic{width:36px;height:36px}
+.vo-mic{position:relative;width:92px;height:92px;border-radius:50%;background:var(--neg);color:#fff;display:grid;place-items:center;margin:10px auto 26px;box-shadow:0 0 30px rgba(220,91,87,.55)}
+.vo-mic .ic{width:38px;height:38px;position:relative;z-index:1}
+.vo-mic:before,.vo-mic:after{content:"";position:absolute;inset:0;border-radius:50%;border:2px solid var(--neg);animation:voWave 1.9s ease-out infinite}
+.vo-mic:after{animation-delay:.95s}
+@keyframes voWave{0%{transform:scale(1);opacity:.7}100%{transform:scale(2.35);opacity:0}}
 .vo-status{font-weight:700;font-size:15px;color:var(--neg);letter-spacing:.02em}
 .vo-text{margin-top:10px;font-size:18px;min-height:54px;color:var(--txt);line-height:1.4}
 .vo-hint{margin-top:14px;font-size:12.5px;color:var(--txt-3)}
-.vo-mic.proc{background:var(--ink);animation:none}
+.vo-mic.proc{background:var(--ink);box-shadow:none}
+.vo-mic.proc:before,.vo-mic.proc:after{display:none}
+/* no text selection / callout on mic + overlay + launcher (fixes long-press selecting text) */
+.mic-fab,.chat-btn,.chat-mic,.tab.center,#voiceOverlay,.vo-card,.coach{user-select:none;-webkit-user-select:none;-webkit-touch-callout:none}
+/* stable range controls: inputs always visible, fixed slots, no layout shift on interaction */
+.range-bar{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:16px}
+.range-dates{display:inline-flex;align-items:center;gap:8px}
+.range-dates input[type=date]{width:148px;padding:8px 10px;font-size:13px}
+.range-dates .rto{color:var(--txt-3);font-size:13px}
+@media (max-width:560px){
+  .range-bar{gap:10px}
+  .range-dates{flex:1 1 100%}
+  .range-dates input[type=date]{flex:1;width:auto;min-width:0}
+}
 
 /* batch review: remove button on each row */
 .br-x{border:0;background:none;color:var(--txt-3);cursor:pointer;padding:5px;display:grid;place-items:center;border-radius:8px;flex:none}
