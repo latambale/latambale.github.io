@@ -343,17 +343,15 @@
     el.innerHTML=
       '<div class="assist-dock">'+
         '<button class="assist-btn chat-btn" id="chatToggle" aria-label="Open assistant">'+I('sparkle')+'</button>'+
-        '<button class="assist-btn mic-fab" id="micFab" aria-label="Hold to speak">'+I('mic')+'</button>'+
       '</div>'+
       '<div class="chat-panel hide" id="chatPanel">'+
         '<div class="chat-h"><span class="chat-title">'+I('sparkle')+' Assistant</span><button class="btn-icon" id="chatClose" aria-label="Close">'+I('close')+'</button></div>'+
         '<div class="chat-msgs" id="chatMsgs"></div>'+
-        '<div class="chat-in"><input id="chatText" placeholder="Type, or hold the mic to speak" autocomplete="off"/>'+
+        '<div class="chat-in"><input id="chatText" placeholder="Type, or click the mic to speak" autocomplete="off"/>'+
           '<button class="btn-icon chat-mic" id="chatMic" aria-label="Hold to speak">'+I('mic')+'</button>'+
           '<button class="btn-icon chat-send" id="chatSend" aria-label="Send">'+I('chevronRight')+'</button></div>'+
       '</div>';
-    bindHoldMic($('#micFab'));
-    bindHoldMic($('#chatMic'));
+    bindClickMic($('#chatMic'),$('#chatText')); // desktop: click to toggle, transcribes into the box
     $('#chatToggle').onclick=chatBot.toggle;
     $('#chatClose').onclick=chatBot.close;
     $('#chatSend').onclick=function(){var t=$('#chatText').value.trim();if(!t)return;$('#chatText').value='';handleUtterance(t);};
@@ -386,6 +384,21 @@
     btn.addEventListener('pointerdown',start);
     btn.addEventListener('pointerup',end);
     btn.addEventListener('pointercancel',end);
+  }
+  // Click-to-toggle mic for the desktop chatbot: first click records (live transcript into
+  // the input), second click stops. User reviews, then sends. No hold-release on desktop.
+  function bindClickMic(btn,input){
+    if(!btn||!input)return;
+    if(!BK.voice.supported){btn.style.display='none';return;}
+    btn.addEventListener('click',function(){
+      if(BK.voice.listening){BK.voice.stop();return;}
+      btn.classList.add('rec');input.placeholder='Listening... click the mic to stop';
+      BK.voice.start(
+        function(t){input.value=t;},
+        function(fin){btn.classList.remove('rec');input.placeholder='Type, or click the mic to speak';if(fin)input.value=fin;input.focus();},
+        function(err){btn.classList.remove('rec');input.placeholder='Type, or click the mic to speak';if(err==='not-allowed')toast('Microphone blocked. Allow access or type.','err');}
+      );
+    });
   }
   function openTypeSheet(pre){
     openSheet('What happened?','<div class="field"><textarea id="tyT" rows="2" placeholder="e.g. Paid 45 thousand to Sharma Steel today">'+esc(pre||'')+'</textarea></div>'+
