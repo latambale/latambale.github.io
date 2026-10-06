@@ -4,6 +4,13 @@
   var toggle = document.getElementById('navToggle');
   document.getElementById('yr').textContent = new Date().getFullYear();
 
+  // render custom SVG icons into [data-ic] placeholders (no emoji in the brand)
+  if (window.BK && BK.icon) {
+    Array.prototype.forEach.call(document.querySelectorAll('[data-ic]'), function (el) {
+      el.innerHTML = BK.icon(el.getAttribute('data-ic'), { size: 22 });
+    });
+  }
+
   // sticky nav style on scroll
   function onScroll() { nav.classList.toggle('scrolled', window.scrollY > 10); }
   window.addEventListener('scroll', onScroll, { passive: true }); onScroll();
@@ -23,7 +30,7 @@
   // FAQ (built from data; keeps HTML lean)
   var faqs = [
     ['Do I need to know accounting?', 'No. You speak or type plain sentences like “paid 20 thousand to the cement vendor”. BuildKhata figures out the rest and you just confirm.'],
-    ['Where is my data stored?', 'In your own Google Sheet. BuildKhata reads and writes it through a secure Google Apps Script backend — no third-party database.'],
+    ['Where is my data stored?', 'In your own Google Sheet. BuildKhata reads and writes it through a secure Google Apps Script backend, with no third-party database.'],
     ['Does voice work offline?', 'Voice uses your device + an AI service, so it needs internet. You can always type an entry instead.'],
     ['Can I track more than one project?', 'Yes. Add as many projects as you like; each has its own cashflow, land cost and reports.'],
     ['Is my OpenAI/email key safe?', 'Keys never touch the browser or the app. They live only in your Apps Script settings on the server side.']

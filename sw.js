@@ -1,11 +1,11 @@
 /* Minimal service worker: cache the app shell so it loads instantly / offline.
  * API calls are never cached (they must always hit the live backend). */
-var CACHE = 'buildkhata-v2';
+var CACHE = 'buildkhata-v3';
 var SHELL = [
   './', 'index.html', 'app.html',
   'css/site.css', 'css/app.css',
-  'js/config.js', 'js/api.js', 'js/site.js', 'js/voice.js', 'js/app.js',
-  'assets/icons/icon.svg', 'manifest.webmanifest'
+  'js/config.js', 'js/icons.js', 'js/api.js', 'js/site.js', 'js/voice.js', 'js/app.js',
+  'assets/icons/icon.svg', 'assets/icons/icon-192.png', 'manifest.webmanifest'
 ];
 
 self.addEventListener('install', function (e) {

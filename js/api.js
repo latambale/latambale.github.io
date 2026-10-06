@@ -17,7 +17,7 @@
         redirect: 'follow'
       });
     } catch (netErr) {
-      var e2 = new Error('Network error — check your connection or backend URL'); e2.code = 'NETWORK'; throw e2;
+      var e2 = new Error('Network error. Please check your connection and try again.'); e2.code = 'NETWORK'; throw e2;
     }
     var json;
     try { json = await res.json(); }
