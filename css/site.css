@@ -211,6 +211,21 @@ footer{padding:56px 0 40px;border-top:1px solid var(--line)}
 .powered-foot{display:inline-flex;align-items:center;gap:7px;margin-top:16px;font-size:13px;font-weight:600;color:var(--ink2);background:var(--surface2);border:1px solid var(--line);padding:7px 12px;border-radius:999px}
 .powered-foot [data-ic]{width:16px;height:16px;color:var(--accent-ink);display:inline-flex}
 
+/* cookie consent banner */
+.bk-consent{position:fixed;left:16px;right:16px;bottom:16px;z-index:200;background:var(--ink);color:#fff;border-radius:16px;box-shadow:0 20px 50px rgba(11,11,12,.35);animation:bkcIn .4s var(--ease);max-width:640px;margin:0 auto}
+.bk-consent.out{opacity:0;transform:translateY(10px);transition:.35s}
+.bk-consent-in{display:flex;align-items:center;gap:18px;padding:16px 18px;flex-wrap:wrap}
+.bk-consent p{margin:0;font-size:13.5px;line-height:1.5;color:#d6d6de;flex:1;min-width:220px}
+.bk-consent a{color:#fff;text-decoration:underline}
+.bk-consent-btns{display:flex;gap:10px}
+.bk-consent button{font-family:inherit;font-weight:600;font-size:13.5px;padding:10px 16px;border-radius:10px;cursor:pointer;border:1px solid transparent;transition:.15s var(--ease)}
+.bk-c-decline{background:transparent;color:#fff;border-color:rgba(255,255,255,.25)}
+.bk-c-decline:hover{background:rgba(255,255,255,.1)}
+.bk-c-accept{background:#fff;color:var(--ink)}
+.bk-c-accept:hover{background:#eee}
+@keyframes bkcIn{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:none}}
+@media (max-width:560px){.bk-consent-in{flex-direction:column;align-items:stretch}.bk-consent-btns{justify-content:flex-end}}
+
 /* policy / document pages */
 .doc{max-width:760px;margin:0 auto;padding:116px 24px 56px}
 .doc h1{font-size:clamp(28px,4vw,36px);letter-spacing:-.02em;margin:0 0 6px}
