@@ -250,6 +250,20 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
 .br-x:hover{color:var(--neg);background:var(--neg-soft)}
 .br-x .ic{width:16px;height:16px}
 
+/* ---------- onboarding coachmark ---------- */
+.coach{position:fixed;z-index:160;max-width:268px;background:var(--ink);color:#fff;padding:13px 15px;border-radius:14px;box-shadow:var(--sh-3);font-size:13.5px;line-height:1.45;cursor:pointer}
+.coach .ct{display:flex;align-items:center;gap:8px;font-weight:700;margin-bottom:4px}
+.coach .ct .ic{width:17px;height:17px;color:#fff}
+.coach .cd{color:#d6d6de}
+.coach:after{content:"";position:absolute;width:12px;height:12px;background:var(--ink);transform:rotate(45deg)}
+.coach.desktop{right:26px;bottom:88px;animation:coachIn .35s var(--ez)}
+.coach.desktop:after{right:22px;bottom:-5px}
+.coach.mobile{left:50%;transform:translateX(-50%);bottom:calc(var(--tab) + 20px);text-align:center;animation:coachInM .35s var(--ez)}
+.coach.mobile:after{left:50%;margin-left:-6px;bottom:-5px}
+.coach.out{opacity:0;transition:opacity .4s}
+@keyframes coachIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+@keyframes coachInM{from{opacity:0;transform:translate(-50%,8px)}to{opacity:1;transform:translateX(-50%)}}
+
 /* ---------- RESPONSIVE: mobile ---------- */
 @media (max-width:899px){
   .shell{grid-template-columns:1fr}

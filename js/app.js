@@ -80,7 +80,7 @@
         if(S.projectId)setProjId(S.projectId);
         return S.projectId?loadLookups():null;
       })
-      .then(function(){go(S.route);startNotifications();})
+      .then(function(){go(S.route);startNotifications();setTimeout(showCoachmark,900);})
       .catch(function(err){if(err.code==='UNAUTHORIZED')renderAuth('Session expired. Please sign in.');else toast(errMsg(err),'err');});
   }
   function loadLookups(){return api('listLookups',{projectId:S.projectId}).then(function(d){S.lookups=d.lookups;});}
@@ -405,6 +405,21 @@
   }
 
   /* ---- floating assistant: hold-to-talk mic (all views) + desktop chatbot ---- */
+  // onboarding hint shown just after login: mobile -> the mic, desktop -> the AI Agent
+  function showCoachmark(){
+    if($('.coach'))return;
+    var isMobile=window.matchMedia&&window.matchMedia('(max-width:899px)').matches;
+    var el=document.createElement('div');
+    el.className='coach '+(isMobile?'mobile':'desktop');
+    el.innerHTML=isMobile
+      ? '<div class="ct">'+I('mic')+' Hold to speak</div><div class="cd">Hold the mic and speak to log anything: a payment, income, or a reminder.</div>'
+      : '<div class="ct">'+I('agent')+' Meet your AI Agent</div><div class="cd">Click here to ask a question, or speak to log entries, set reminders and more.</div>';
+    document.body.appendChild(el);
+    function dismiss(){if(!el.parentNode)return;el.classList.add('out');document.removeEventListener('pointerdown',dismiss);setTimeout(function(){if(el.parentNode)el.remove();},400);}
+    el.addEventListener('click',dismiss);
+    setTimeout(function(){document.addEventListener('pointerdown',dismiss);},500);
+    setTimeout(dismiss,8000);
+  }
   function mountAssistant(){
     var el=$('#assistant');if(!el)return;
     el.innerHTML=
