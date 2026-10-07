@@ -364,3 +364,8 @@ footer{padding:56px 0 40px;border-top:1px solid var(--line)}
 .gpt-logo svg.ic{width:60px !important;height:60px !important}
 .show-tag svg.ic{width:15px !important;height:15px !important}
 .wf-arrow svg.ic{width:20px !important;height:20px !important;color:var(--line)}
+
+/* homepage help/support floating button */
+.help-fab{position:fixed;right:22px;bottom:22px;z-index:120;width:52px;height:52px;border-radius:50%;background:var(--ink);color:#fff;display:grid;place-items:center;box-shadow:0 12px 30px rgba(11,11,12,.3);transition:transform .18s var(--ease)}
+.help-fab:hover{transform:scale(1.06)}
+.help-fab [data-ic]{width:24px;height:24px;display:inline-flex;color:#fff}

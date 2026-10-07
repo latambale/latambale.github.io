@@ -114,6 +114,7 @@
           '<nav class="nav-group" id="navGroup">'+NAV.map(function(n){return navBtn(n);}).join('')+'</nav>'+
           '<div class="side-foot">'+
             '<div class="side-user" id="sideUser"></div>'+
+            '<button class="nav-item" id="helpBtn">'+I('help')+'<span>Help &amp; Support</span></button>'+
             '<button class="nav-item" id="themeToggle" data-theme-btn></button>'+
             '<button class="nav-item" data-go="settings">'+I('settings')+'<span>Settings</span></button>'+
             '<button class="nav-item" id="logoutBtn">'+I('logout')+'<span>Log out</span></button>'+
@@ -135,6 +136,7 @@
     $('.side-foot').addEventListener('click',navClick);
     $('#logoutBtn').addEventListener('click',logout);
     $('#tabbar').addEventListener('click',navClick);
+    $('#helpBtn').addEventListener('click',function(e){e.stopPropagation();openSupportSheet();});
     $('#themeToggle').addEventListener('click',function(e){e.stopPropagation();toggleTheme();});
     $('#themeM').addEventListener('click',toggleTheme);
     refreshThemeBtns();
@@ -861,10 +863,25 @@
   /* ======================= MORE MENU (mobile) ======================= */
   function openMoreMenu(){
     var items=[['bookings','home','Bookings'],['vendors','cube','Vendors'],['invoices','doc','Invoices'],['gst','folder','GST invoices'],['settings','settings','Settings']];
-    openSheet('More',items.map(function(it){return '<button class="btn btn-ghost btn-block" data-m="'+it[0]+'" style="justify-content:flex-start;margin-bottom:8px">'+I(it[1])+' '+it[2]+'</button>';}).join('')+'<button class="btn btn-danger btn-block" id="mLo" style="margin-top:6px">'+I('logout')+' Log out</button>',function(root){
+    openSheet('More',items.map(function(it){return '<button class="btn btn-ghost btn-block" data-m="'+it[0]+'" style="justify-content:flex-start;margin-bottom:8px">'+I(it[1])+' '+it[2]+'</button>';}).join('')+
+      '<button class="btn btn-ghost btn-block" id="mHelp" style="justify-content:flex-start;margin-bottom:8px">'+I('help')+' Help &amp; Support</button>'+
+      '<button class="btn btn-danger btn-block" id="mLo" style="margin-top:6px">'+I('logout')+' Log out</button>',function(root){
       $all('[data-m]',root).forEach(function(b){b.onclick=function(){closeSheet();go(b.getAttribute('data-m'));};});
+      $('#mHelp',root).onclick=function(){closeSheet();openSupportSheet();};
       $('#mLo',root).onclick=logout;
     });
+  }
+  function openSupportSheet(){
+    openSheet('Help &amp; Support','<p class="muted" style="margin:0 0 14px;font-size:13.5px">Have a question or found a problem? Raise a ticket and we will reply by email.</p>'+
+      '<div class="field"><label>Subject</label><input id="spSub" placeholder="What is this about?"/></div>'+
+      '<div class="field"><label>Message</label><textarea id="spMsg" rows="4" placeholder="Describe your question or issue"></textarea></div>'+
+      '<button class="btn btn-primary btn-block" id="spSend">'+I('mail')+' Send to support</button>',function(root){
+        $('#spSend',root).onclick=function(){var msg=$('#spMsg',root).value.trim();if(!msg){toast('Please add a message');return;}
+          var btn=$('#spSend',root);btn.disabled=true;btn.innerHTML='<span class="spin"></span>';
+          api('support',{email:(S.user&&S.user.email)||'',subject:$('#spSub',root).value.trim(),message:msg,source:'app'})
+            .then(function(){closeSheet();toast('Sent. We will get back to you.','ok');})
+            .catch(function(e){btn.disabled=false;btn.innerHTML=I('mail')+' Send to support';toast(e.code==='UNKNOWN_ACTION'?'Support is not enabled yet (redeploy backend).':errMsg(e),'err');});};
+      });
   }
 
   /* ======================= REPORT PDF / EMAIL ======================= */
