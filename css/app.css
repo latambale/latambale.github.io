@@ -318,3 +318,50 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
   .sheet-bg{align-items:flex-end;padding:0}
 }
 @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+
+/* ---------- password eye + clickable rows ---------- */
+.pass-wrap{position:relative}
+.pass-wrap input{padding-right:44px}
+.pass-eye{position:absolute;right:6px;top:50%;transform:translateY(-50%);width:34px;height:34px;border:0;background:none;color:var(--txt-3);cursor:pointer;display:grid;place-items:center;border-radius:8px}
+.pass-eye:hover{color:var(--txt);background:var(--card-2)}
+.pass-eye .ic{width:19px;height:19px}
+.item .chev{color:var(--txt-3);flex:none;display:flex}
+.item .chev .ic{width:18px;height:18px}
+
+/* ========================= DARK THEME ========================= */
+:root[data-theme="dark"]{
+  --paper:#0C0D10; --card:#16171B; --card-2:#1D1E23;
+  --line:#272930; --line-2:#383B45;
+  --txt:#ECEDF1; --txt-2:#AEB0B8; --txt-3:#7E808A;
+  --inv:#0C0D10; --inv-2:#8A8C95; --inv-line:rgba(255,255,255,.08);
+  --accent:#6E9BF4; --accent-ink:#A6C1FA; --accent-soft:#1A2541;
+  --pos:#36B98A; --pos-soft:#102A1E; --neg:#E8736F; --neg-soft:#2E1917; --warn:#D6A345;
+  --sh-1:0 1px 2px rgba(0,0,0,.5); --sh-2:0 2px 8px rgba(0,0,0,.55); --sh-3:0 22px 55px rgba(0,0,0,.66);
+}
+/* components that are hardcoded dark in light mode need lifting so they stay visible */
+:root[data-theme="dark"] body{background:var(--paper)}
+:root[data-theme="dark"] .side{background:#101114;border-right:1px solid var(--line)}
+:root[data-theme="dark"] .topbar{background:rgba(16,17,20,.86)}
+:root[data-theme="dark"] .tabbar{background:rgba(16,17,20,.94)}
+:root[data-theme="dark"] .btn-primary{background:#ECEDF1;color:#101114;border-color:#ECEDF1}
+:root[data-theme="dark"] .btn-primary:hover{background:#fff}
+:root[data-theme="dark"] .kpi.hero{background:linear-gradient(135deg,#1b2541,#14181f);border-color:var(--line-2)}
+:root[data-theme="dark"] .kpi.hero .kv{color:#fff}
+:root[data-theme="dark"] .chat-btn{background:#16171B;border:1px solid var(--line-2)}
+:root[data-theme="dark"] .msg.user{background:#2b2e38;color:#fff}
+:root[data-theme="dark"] #toast{background:#23242b;border:1px solid var(--line-2)}
+:root[data-theme="dark"] select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%237E808A' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E")}
+:root[data-theme="dark"] .chip.in{background:var(--pos-soft);color:#5fd6a8}
+:root[data-theme="dark"] .chip.out{background:var(--neg-soft);color:#ef9b98}
+:root[data-theme="dark"] .pie-border,:root[data-theme="dark"] canvas{color:#fff}
+/* theme-color meta handled in JS */
+
+/* appearance segmented in settings */
+.seg.theme-seg button.on{background:var(--ink);color:#fff}
+:root[data-theme="dark"] .seg.theme-seg button.on{background:#ECEDF1;color:#101114}
+
+/* top progress bar */
+#loadbar{position:fixed;top:0;left:0;right:0;height:3px;z-index:300;overflow:hidden;opacity:0;transition:opacity .25s;pointer-events:none}
+#loadbar.on{opacity:1}
+#loadbar:before{content:"";position:absolute;height:100%;width:40%;background:var(--accent);border-radius:3px;animation:lbar 1.05s infinite ease-in-out}
+@keyframes lbar{0%{left:-42%}100%{left:100%}}

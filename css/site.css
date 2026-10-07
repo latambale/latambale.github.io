@@ -147,9 +147,10 @@ footer{padding:56px 0 40px;border-top:1px solid var(--line)}
   .hero{padding:120px 0 60px}
   .nav-links,.nav-cta .btn-ghost{display:none}
   .nav-toggle{display:block}
-  .nav.open .nav-links{display:flex;position:absolute;top:64px;left:0;right:0;flex-direction:column;
-    gap:0;background:var(--surface);border-bottom:1px solid var(--line);padding:8px 24px 16px}
-  .nav.open .nav-links a{padding:12px 0;border-bottom:1px solid var(--line)}
+  .nav.open .nav-links{display:flex;position:absolute;top:64px;left:0;right:0;flex-direction:column;align-items:stretch;
+    gap:0;background:var(--surface);border-bottom:1px solid var(--line);padding:6px 20px 14px;box-shadow:0 20px 44px rgba(11,11,12,.12)}
+  .nav.open .nav-links a{padding:15px 4px;font-size:16px;font-weight:600;text-align:left;border-bottom:1px solid var(--line);color:var(--ink)}
+  .nav.open .nav-links a:last-child{border-bottom:0;color:var(--accent-ink);font-weight:700}
   .cta-band{padding:40px 22px}
 }
 @media (prefers-reduced-motion:reduce){
@@ -275,11 +276,11 @@ footer{padding:56px 0 40px;border-top:1px solid var(--line)}
 
 /* powered by gpt band */
 .gptband{padding:30px 0}
-.gpt-card{background:var(--ink);color:#fff;border-radius:24px;padding:40px;display:grid;grid-template-columns:200px 1fr;gap:34px;align-items:center;background-image:radial-gradient(50% 80% at 10% 0%,rgba(47,163,124,.16),transparent 60%),radial-gradient(40% 80% at 100% 100%,rgba(91,141,239,.16),transparent 60%)}
+.gpt-card{background:var(--ink);color:#fff;border-radius:24px;padding:40px;display:grid;grid-template-columns:200px 1fr;gap:34px;align-items:center;background-image:radial-gradient(55% 90% at 8% 0%,rgba(91,141,239,.18),transparent 62%),radial-gradient(45% 90% at 100% 100%,rgba(255,255,255,.07),transparent 60%)}
 .gpt-logo{width:150px;height:150px;border-radius:50%;margin:0 auto;display:grid;place-items:center;border:1px solid rgba(255,255,255,.16);position:relative;background:rgba(255,255,255,.03)}
-.gpt-logo:before{content:"";position:absolute;inset:-1px;border-radius:50%;box-shadow:0 0 44px rgba(47,163,124,.4)}
+.gpt-logo:before{content:"";position:absolute;inset:-1px;border-radius:50%;box-shadow:0 0 46px rgba(91,141,239,.42)}
 .gpt-logo [data-ic]{width:64px;height:64px;color:#fff;display:inline-flex}
-.gpt-kicker{font-size:12.5px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:#2FA37C}
+.gpt-kicker{font-size:12.5px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:#93B4F8}
 .gpt-content h2{font-size:clamp(24px,3vw,34px);margin:8px 0 22px;letter-spacing:-.02em}
 .gpt-rows{display:flex;flex-direction:column;gap:18px}
 .gpt-row{display:flex;gap:14px;align-items:flex-start}

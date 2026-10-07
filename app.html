@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,maximum-scale=1"/>
 <title>BuildKhata</title>
 <meta name="theme-color" content="#0B0B0C"/>
+<script>try{document.documentElement.setAttribute('data-theme',localStorage.getItem('bk_theme')||'light')}catch(e){}</script>
 <link rel="icon" href="assets/icons/icon.svg"/>
 <link rel="apple-touch-icon" href="assets/icons/icon.svg"/>
 <link rel="manifest" href="manifest.webmanifest"/>
@@ -16,6 +17,7 @@
 <body>
 
 <!-- Everything is rendered by app.js into these roots -->
+<div id="loadbar"></div>
 <div id="auth-root"></div>
 <div id="app" class="hide"></div>
 <div id="modal-root"></div>

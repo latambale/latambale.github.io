@@ -3,7 +3,13 @@
  * Voice understands transactions AND commands. Custom SVG icons only. */
 (function () {
   'use strict';
-  var api = function (a, p) { return BK.api.call(a, p); };
+  var _pending = 0;
+  function _bar(on){var el=document.getElementById('loadbar');if(el)el.classList.toggle('on',!!on);}
+  function api(a, p){
+    _pending++; _bar(true);
+    function done(){ if(--_pending<=0){_pending=0; _bar(false);} }
+    return BK.api.call(a, p).then(function(r){done();return r;}, function(e){done();throw e;});
+  }
   var money = BK.money, I = BK.icon, CI = BK.catIcon;
 
   /* ---------- helpers ---------- */
@@ -33,6 +39,11 @@
   function getProjId(){try{return localStorage.getItem('bk_proj')||null;}catch(e){return null;}}
   function setProjId(id){S.projectId=id;try{localStorage.setItem('bk_proj',id);}catch(e){}}
   function curProject(){return S.projects.filter(function(p){return p.id===S.projectId;})[0]||{};}
+  // theme
+  function getTheme(){try{return localStorage.getItem('bk_theme')||'light';}catch(e){return 'light';}}
+  function applyTheme(t){document.documentElement.setAttribute('data-theme',t);try{localStorage.setItem('bk_theme',t);}catch(e){}var m=document.querySelector('meta[name="theme-color"]');if(m)m.setAttribute('content',t==='dark'?'#0B0C0E':'#0B0B0C');refreshThemeBtns();}
+  function toggleTheme(){applyTheme(getTheme()==='dark'?'light':'dark');}
+  function refreshThemeBtns(){var dark=getTheme()==='dark';$all('[data-theme-btn]').forEach(function(b){b.innerHTML=I(dark?'sun':'moon')+'<span>'+(dark?'Light mode':'Dark mode')+'</span>';});var mb=$('#themeM');if(mb)mb.innerHTML=I(dark?'sun':'moon');}
 
   var CAT={BOOKING:{label:'Booking',lookup:'INVENTORY_TYPE'},VENDOR:{label:'Vendor',lookup:'VENDOR_TYPE'},
     SALARY:{label:'Salary',lookup:'SALARY_ROLE'},MISC:{label:'Miscellaneous',lookup:'MISC_TYPE'},
@@ -53,11 +64,12 @@
       (msg?'<div class="auth-err">'+esc(msg)+'</div>':'')+
       '<form id="lf">'+
       '<div class="field"><label>Email</label><input id="liEmail" type="email" autocomplete="username" required placeholder="you@example.com"/></div>'+
-      '<div class="field"><label>Password</label><input id="liPass" type="password" autocomplete="current-password" required placeholder="Your password"/></div>'+
+      '<div class="field"><label>Password</label><div class="pass-wrap"><input id="liPass" type="password" autocomplete="current-password" required placeholder="Your password"/><button type="button" class="pass-eye" id="liEye" aria-label="Show password">'+I('eye')+'</button></div></div>'+
       '<button class="btn btn-primary btn-block" type="submit" id="liBtn">Sign in '+I('chevronRight')+'</button>'+
       '</form>'+
       '<p class="muted" style="font-size:12.5px;margin-top:18px"><a href="index.html">Back to site</a></p>'+
       '</div></div>'));
+    $('#liEye').onclick=function(){var p=$('#liPass'),sh=p.type==='password';p.type=sh?'text':'password';this.innerHTML=I(sh?'eyeOff':'eye');};
     $('#lf').addEventListener('submit',function(e){
       e.preventDefault();
       var btn=$('#liBtn');btn.disabled=true;btn.innerHTML='<span class="spin"></span>';
@@ -102,6 +114,7 @@
           '<nav class="nav-group" id="navGroup">'+NAV.map(function(n){return navBtn(n);}).join('')+'</nav>'+
           '<div class="side-foot">'+
             '<div class="side-user" id="sideUser"></div>'+
+            '<button class="nav-item" id="themeToggle" data-theme-btn></button>'+
             '<button class="nav-item" data-go="settings">'+I('settings')+'<span>Settings</span></button>'+
             '<button class="nav-item" id="logoutBtn">'+I('logout')+'<span>Log out</span></button>'+
           '</div>'+
@@ -110,6 +123,7 @@
           '<div class="topbar">'+
             '<span class="tb-brand"><img src="assets/icons/icon.svg" alt=""/> BuildKhata</span>'+
             '<select class="tb-proj" id="projSelM" aria-label="Project"></select>'+
+            '<button class="btn-icon" id="themeM" aria-label="Toggle theme" style="margin-left:8px"></button>'+
           '</div>'+
           '<div class="content"><div id="view"></div></div>'+
           tabbar()+
@@ -121,6 +135,9 @@
     $('.side-foot').addEventListener('click',navClick);
     $('#logoutBtn').addEventListener('click',logout);
     $('#tabbar').addEventListener('click',navClick);
+    $('#themeToggle').addEventListener('click',function(e){e.stopPropagation();toggleTheme();});
+    $('#themeM').addEventListener('click',toggleTheme);
+    refreshThemeBtns();
     mountAssistant();
     bindHoldMic($('#micTab'));
   }
@@ -170,8 +187,8 @@
       '<div class="card" style="margin-top:16px">'+
         '<div class="card-h"><h3>Cashflow</h3></div>'+
         '<div class="range-bar">'+
-          '<span class="seg" id="rangeSeg"><button data-r="30">30D</button><button data-r="90" class="on">90D</button><button data-r="365">1Y</button><button data-r="0">All</button></span>'+
-          '<span class="range-dates"><input type="date" id="rFrom" aria-label="From date"/><span class="rto">to</span><input type="date" id="rTo" aria-label="To date"/></span>'+
+          '<span class="seg" id="rangeSeg"><button data-r="30" class="on">30D</button><button data-r="90">90D</button><button data-r="365">1Y</button><button data-r="0">All</button></span>'+
+          '<span class="range-dates"><input type="date" id="rFrom" max="'+todayStr()+'" aria-label="From date"/><span class="rto">to</span><input type="date" id="rTo" max="'+todayStr()+'" aria-label="To date"/></span>'+
         '</div>'+
         '<div class="chart-box"><canvas id="trendC"></canvas></div></div>'+
       '<div class="dash-grid">'+
@@ -179,8 +196,8 @@
         '<div class="card"><div class="card-h"><h3>Projection</h3><span class="sub">from this month</span></div><div id="projBox"></div></div>'+
       '</div>';
     $('#dlReport').onclick=exportReportPdf;$('#emReport').onclick=emailReportFlow;
-    // default 90D, with the date inputs already filled to match (no hide/show, no layout shift)
-    var def=rangeFromDays(90);$('#rFrom').value=def.from;$('#rTo').value=def.to;
+    // default 30D, with the date inputs already filled to match (no hide/show, no layout shift)
+    var def=rangeFromDays(30);$('#rFrom').value=def.from;$('#rTo').value=def.to;
     $('#rangeSeg').addEventListener('click',function(e){var b=e.target.closest('button');if(!b)return;
       $all('#rangeSeg button').forEach(function(x){x.classList.remove('on');});b.classList.add('on');
       var r=Number(b.getAttribute('data-r'));
@@ -568,13 +585,13 @@
   function hideVoiceOverlay(){var o=$('#voiceOverlay');if(!o)return;o.classList.add('hide');o.innerHTML='';}
 
   /* ======================= LEDGER (monthly) ======================= */
-  var ledFilter='all',ledFrom='',ledTo='';
+  var ledFilter='all',ledFrom=daysAgo(30),ledTo=todayStr();
   function viewLedger(v,mySeq){
     v.innerHTML=pageHead('Transactions',curProject().name||'')+
       '<div class="card">'+
         '<div class="range-bar">'+
           '<span class="seg" id="ledSeg"><button data-f="all" class="'+(ledFilter==='all'?'on':'')+'">All</button><button data-f="INCOME" class="'+(ledFilter==='INCOME'?'on':'')+'">In</button><button data-f="EXPENSE" class="'+(ledFilter==='EXPENSE'?'on':'')+'">Out</button></span>'+
-          '<span class="range-dates"><input type="date" id="lFrom" aria-label="From date" value="'+ledFrom+'"/><span class="rto">to</span><input type="date" id="lTo" aria-label="To date" value="'+ledTo+'"/><button class="btn btn-ghost btn-sm" id="lClear">Clear</button></span>'+
+          '<span class="range-dates"><input type="date" id="lFrom" max="'+todayStr()+'" aria-label="From date" value="'+ledFrom+'"/><span class="rto">to</span><input type="date" id="lTo" max="'+todayStr()+'" aria-label="To date" value="'+ledTo+'"/><button class="btn btn-ghost btn-sm" id="lClear">Clear</button></span>'+
         '</div>'+
         '<div id="txList"><div class="skeleton" style="height:220px"></div></div></div>';
     $('#ledSeg').addEventListener('click',function(e){var b=e.target.closest('button');if(!b)return;$all('#ledSeg button').forEach(function(x){x.classList.remove('on');});b.classList.add('on');ledFilter=b.getAttribute('data-f');paint();});
@@ -603,11 +620,22 @@
       '<div class="s">'+fmtDate(t.date)+' · '+(CAT[t.category]||{}).label+(t.source==='voice'?' · voice':'')+'</div></div>'+
       '<div class="amt '+(out?'out':'in')+'">'+(out?'-':'+')+money(t.amount)+'</div></div>';}
   function openTxSheet(t){if(!t)return;
-    openSheet('Entry','<div class="item" style="cursor:default"><div class="av">'+I(CI[t.category]||'box')+'</div><div class="meta"><div class="t">'+esc(t.subCategory||(CAT[t.category]||{}).label)+'</div><div class="s">'+fmtDate(t.date)+'</div></div><div class="amt '+(t.type==='EXPENSE'?'out':'in')+'">'+(t.type==='EXPENSE'?'-':'+')+money(t.amount)+'</div></div>'+
-      (t.note?'<p class="muted" style="margin:12px 2px">'+esc(t.note)+'</p>':'')+
-      '<div class="row2" style="margin-top:14px"><button class="btn btn-ghost" id="txEdit">'+I('edit')+' Edit amount</button><button class="btn btn-danger" id="txDel">'+I('trash')+' Delete</button></div>',function(root){
-        $('#txDel',root).onclick=function(){confirmSheet('Delete this entry?',function(){api('deleteTransaction',{id:t.id}).then(function(){invalidateTx();closeSheet();toast('Deleted','ok');go('ledger');}).catch(function(e){toast(errMsg(e),'err');});});};
-        $('#txEdit',root).onclick=function(){var val=prompt('New amount:',t.amount);if(val==null)return;api('updateTransaction',{id:t.id,amount:Number(val)||0}).then(function(){invalidateTx();closeSheet();toast('Updated','ok');go('ledger');}).catch(function(e){toast(errMsg(e),'err');});};
+    var cats=Object.keys(CAT);
+    openSheet('Edit entry',
+      '<div class="row2"><div class="field"><label>Type</label><select id="eType"><option value="EXPENSE"'+(t.type!=='INCOME'?' selected':'')+'>Money out</option><option value="INCOME"'+(t.type==='INCOME'?' selected':'')+'>Money in</option></select></div>'+
+      '<div class="field"><label>Category</label><select id="eCat">'+cats.map(function(c){return '<option value="'+c+'"'+(t.category===c?' selected':'')+'>'+CAT[c].label+'</option>';}).join('')+'</select></div></div>'+
+      '<div class="field" id="eSubWrap"></div>'+
+      '<div class="row2"><div class="field"><label>Amount ('+BK.brand.currency.symbol+')</label><input id="eAmt" type="number" value="'+(t.amount||'')+'"/></div>'+
+      '<div class="field"><label>Date</label><input id="eDate" type="date" max="'+todayStr()+'" value="'+esc(String(t.date).slice(0,10))+'"/></div></div>'+
+      '<div class="field"><label>Note</label><input id="eNote" value="'+esc(t.note||'')+'"/></div>'+
+      '<button class="btn btn-primary btn-block" id="txSave">'+I('check')+' Save changes</button>'+
+      '<button class="btn btn-danger btn-block" id="txDel" style="margin-top:10px">'+I('trash')+' Delete entry</button>',function(root){
+        function refreshSub(){var cat=$('#eCat',root).value,w=$('#eSubWrap',root),lk=CAT[cat].lookup;
+          if(lk){var opts=lookupNames(lk);w.innerHTML='<label>'+(cat==='SALARY'?'Role':cat==='BOOKING'?'Unit type':'Type')+'</label><select id="eSub">'+opts.map(function(o){return '<option'+(String(t.subCategory).toLowerCase()===o.toLowerCase()?' selected':'')+'>'+esc(o)+'</option>';}).join('')+'</select>';}else w.innerHTML='';}
+        $('#eCat',root).onchange=refreshSub;refreshSub();
+        $('#txSave',root).onclick=function(){var patch={id:t.id,type:$('#eType',root).value,category:$('#eCat',root).value,subCategory:$('#eSub',root)?$('#eSub',root).value:'',amount:Number($('#eAmt',root).value)||0,date:$('#eDate',root).value,note:$('#eNote',root).value.trim()};
+          api('updateTransaction',patch).then(function(){invalidateTx();closeSheet();toast('Updated','ok');go(S.route==='dashboard'?'dashboard':'ledger');}).catch(function(e){toast(errMsg(e),'err');});};
+        $('#txDel',root).onclick=function(){confirmSheet('Delete this entry?',function(){api('deleteTransaction',{id:t.id}).then(function(){invalidateTx();toast('Deleted','ok');go('ledger');}).catch(function(e){toast(errMsg(e),'err');});});};
       });
   }
 
@@ -629,7 +657,7 @@
           (r.status==='done'?'':'<button class="btn btn-sm btn-ghost" data-done="'+r.id+'">'+I('check')+' Done</button>')+
           '<button class="btn-icon btn-sm" data-del="'+r.id+'" style="margin-left:6px">'+I('trash')+'</button></div>';}).join('');
       $all('[data-done]',el).forEach(function(b){b.onclick=function(){api('updateReminder',{id:b.getAttribute('data-done'),status:'done'}).then(function(){loadReminders();});};});
-      $all('[data-del]',el).forEach(function(b){b.onclick=function(){api('deleteReminder',{id:b.getAttribute('data-del')}).then(function(){loadReminders();toast('Deleted','ok');});};});
+      $all('[data-del]',el).forEach(function(b){b.onclick=function(){confirmSheet('Delete this reminder?',function(){api('deleteReminder',{id:b.getAttribute('data-del')}).then(function(){loadReminders();toast('Deleted','ok');});});};});
     }).catch(function(e){toast(errMsg(e),'err');});
   }
   function openReminderSheet(pre){
@@ -656,16 +684,23 @@
       '<div class="card"><div id="venList"><div class="skeleton" style="height:140px"></div></div></div>';
     $('#addV').onclick=function(){openVendorSheet();};
     api('listVendors',{projectId:S.projectId}).then(function(d){if(!alive(mySeq))return;var el=$('#venList');
-      el.innerHTML=d.vendors.length?d.vendors.map(function(v){return '<div class="item" style="cursor:default"><div class="av">'+I('cube')+'</div><div class="meta"><div class="t">'+esc(v.name)+'</div><div class="s">'+esc(v.vendorType||'')+(v.phone?' · '+esc(v.phone):'')+(v.gstin?' · GST '+esc(v.gstin):'')+'</div></div></div>';}).join(''):'<div class="empty"><div class="ei">'+I('cube')+'</div><h3>No vendors yet</h3></div>';
+      if(!d.vendors.length){el.innerHTML='<div class="empty"><div class="ei">'+I('cube')+'</div><h3>No vendors yet</h3></div>';return;}
+      el.innerHTML=d.vendors.map(function(v){return '<div class="item" data-id="'+v.id+'"><div class="av">'+I('cube')+'</div><div class="meta"><div class="t">'+esc(v.name)+'</div><div class="s">'+esc(v.vendorType||'')+(v.phone?' · '+esc(v.phone):'')+(v.gstin?' · GST '+esc(v.gstin):'')+'</div></div><span class="chev">'+I('chevronRight')+'</span></div>';}).join('');
+      $all('.item[data-id]',el).forEach(function(it){it.onclick=function(){openVendorSheet(d.vendors.filter(function(x){return x.id===it.getAttribute('data-id');})[0]);};});
     }).catch(function(e){toast(errMsg(e),'err');});
   }
-  function openVendorSheet(){var types=lookupNames('VENDOR_TYPE');
-    openSheet('New vendor','<div class="field"><label>Name</label><input id="vN" placeholder="Sharma Steel"/></div>'+
-      '<div class="field"><label>Type</label><select id="vT">'+types.map(function(t){return '<option>'+esc(t)+'</option>';}).join('')+'</select></div>'+
-      '<div class="row2"><div class="field"><label>Phone</label><input id="vP"/></div><div class="field"><label>GSTIN</label><input id="vG"/></div></div>'+
-      '<button class="btn btn-primary btn-block" id="vS">Save vendor</button>',function(root){
+  function openVendorSheet(ven){
+    ven=ven||null;var types=lookupNames('VENDOR_TYPE');
+    openSheet(ven?'Edit vendor':'New vendor','<div class="field"><label>Name</label><input id="vN" value="'+esc(ven?ven.name:'')+'" placeholder="Sharma Steel"/></div>'+
+      '<div class="field"><label>Type</label><select id="vT">'+types.map(function(t){return '<option'+(ven&&String(ven.vendorType)===t?' selected':'')+'>'+esc(t)+'</option>';}).join('')+'</select></div>'+
+      '<div class="row2"><div class="field"><label>Phone</label><input id="vP" value="'+esc(ven?ven.phone:'')+'"/></div><div class="field"><label>GSTIN</label><input id="vG" value="'+esc(ven?ven.gstin:'')+'"/></div></div>'+
+      '<button class="btn btn-primary btn-block" id="vS">'+I('check')+' '+(ven?'Save changes':'Save vendor')+'</button>'+
+      (ven?'<button class="btn btn-danger btn-block" id="vDel" style="margin-top:10px">'+I('trash')+' Delete vendor</button>':''),function(root){
         $('#vS',root).onclick=function(){var n=$('#vN',root).value.trim();if(!n){toast('Enter a name');return;}
-          api('createVendor',{projectId:S.projectId,name:n,vendorType:$('#vT',root).value,phone:$('#vP',root).value.trim(),gstin:$('#vG',root).value.trim()}).then(function(){closeSheet();toast('Saved','ok');go('vendors');}).catch(function(e){toast(errMsg(e),'err');});};
+          var payload={projectId:S.projectId,name:n,vendorType:$('#vT',root).value,phone:$('#vP',root).value.trim(),gstin:$('#vG',root).value.trim()};
+          var pr=ven?api('updateVendor',{id:ven.id,name:payload.name,vendorType:payload.vendorType,phone:payload.phone,gstin:payload.gstin}):api('createVendor',payload);
+          pr.then(function(){closeSheet();toast('Saved','ok');go('vendors');}).catch(function(e){toast(errMsg(e),'err');});};
+        if(ven)$('#vDel',root).onclick=function(){confirmSheet('Delete vendor "'+ven.name+'"? This cannot be undone.',function(){api('deleteVendor',{id:ven.id}).then(function(){toast('Deleted','ok');go('vendors');}).catch(function(e){toast(errMsg(e),'err');});});};
       });
   }
 
@@ -675,17 +710,24 @@
       '<div class="card"><div id="bkList"><div class="skeleton" style="height:140px"></div></div></div>';
     $('#addB').onclick=function(){openBookingSheet();};
     api('listBookings',{projectId:S.projectId}).then(function(d){if(!alive(mySeq))return;var el=$('#bkList');
-      el.innerHTML=d.bookings.length?d.bookings.map(function(b){return '<div class="item" style="cursor:default"><div class="av">'+I('home')+'</div><div class="meta"><div class="t">'+esc(b.customerName)+' · '+esc(b.inventoryType)+'</div><div class="s">'+fmtDate(b.bookingDate)+' · '+esc(b.status)+'</div></div><div class="amt in">'+money(b.amount)+'</div></div>';}).join(''):'<div class="empty"><div class="ei">'+I('home')+'</div><h3>No bookings yet</h3></div>';
+      if(!d.bookings.length){el.innerHTML='<div class="empty"><div class="ei">'+I('home')+'</div><h3>No bookings yet</h3></div>';return;}
+      el.innerHTML=d.bookings.map(function(b){return '<div class="item" data-id="'+b.id+'"><div class="av">'+I('home')+'</div><div class="meta"><div class="t">'+esc(b.customerName)+' · '+esc(b.inventoryType)+'</div><div class="s">'+fmtDate(b.bookingDate)+' · '+esc(b.status)+'</div></div><div class="amt in">'+money(b.amount)+'</div></div>';}).join('');
+      $all('.item[data-id]',el).forEach(function(it){it.onclick=function(){openBookingSheet(d.bookings.filter(function(x){return x.id===it.getAttribute('data-id');})[0]);};});
     }).catch(function(e){toast(errMsg(e),'err');});
   }
-  function openBookingSheet(){var types=lookupNames('INVENTORY_TYPE');
-    openSheet('New booking','<div class="field"><label>Customer name</label><input id="bN" placeholder="Mr. Patil"/></div>'+
-      '<div class="row2"><div class="field"><label>Unit</label><select id="bT">'+types.map(function(t){return '<option>'+esc(t)+'</option>';}).join('')+'</select></div><div class="field"><label>Amount</label><input id="bA" type="number"/></div></div>'+
-      '<div class="row2"><div class="field"><label>Date</label><input id="bD" type="date" value="'+todayStr()+'"/></div><div class="field"><label>Phone</label><input id="bP"/></div></div>'+
-      '<p class="muted" style="font-size:12.5px">Saving also records this as project income.</p>'+
-      '<button class="btn btn-primary btn-block" id="bS">Save booking</button>',function(root){
+  function openBookingSheet(bk){
+    bk=bk||null;var types=lookupNames('INVENTORY_TYPE');var statuses=['booked','partly-paid','paid','cancelled'];
+    openSheet(bk?'Edit booking':'New booking','<div class="field"><label>Customer name</label><input id="bN" value="'+esc(bk?bk.customerName:'')+'" placeholder="Mr. Patil"/></div>'+
+      '<div class="row2"><div class="field"><label>Unit</label><select id="bT">'+types.map(function(t){return '<option'+(bk&&String(bk.inventoryType)===t?' selected':'')+'>'+esc(t)+'</option>';}).join('')+'</select></div><div class="field"><label>Amount</label><input id="bA" type="number" value="'+(bk?bk.amount:'')+'"/></div></div>'+
+      (bk?'<div class="row2"><div class="field"><label>Status</label><select id="bStatus">'+statuses.map(function(s){return '<option'+(bk.status===s?' selected':'')+'>'+s+'</option>';}).join('')+'</select></div><div class="field"><label>Phone</label><input id="bP" value="'+esc(bk.customerPhone||'')+'"/></div></div>'
+        :'<div class="row2"><div class="field"><label>Date</label><input id="bD" type="date" max="'+todayStr()+'" value="'+todayStr()+'"/></div><div class="field"><label>Phone</label><input id="bP"/></div></div>')+
+      (bk?'':'<p class="muted" style="font-size:12.5px">Saving also records this as project income.</p>')+
+      '<button class="btn btn-primary btn-block" id="bS">'+I('check')+' '+(bk?'Save changes':'Save booking')+'</button>'+
+      (bk?'<button class="btn btn-danger btn-block" id="bDel" style="margin-top:10px">'+I('trash')+' Delete booking</button>':''),function(root){
         $('#bS',root).onclick=function(){var n=$('#bN',root).value.trim();if(!n){toast('Enter a name');return;}
-          api('createBooking',{projectId:S.projectId,customerName:n,inventoryType:$('#bT',root).value,amount:Number($('#bA',root).value)||0,bookingDate:$('#bD',root).value,customerPhone:$('#bP',root).value.trim()}).then(function(){invalidateTx();closeSheet();toast('Saved','ok');go('bookings');}).catch(function(e){toast(errMsg(e),'err');});};
+          if(bk){api('updateBooking',{id:bk.id,customerName:n,inventoryType:$('#bT',root).value,amount:Number($('#bA',root).value)||0,status:$('#bStatus',root).value,customerPhone:$('#bP',root).value.trim()}).then(function(){closeSheet();toast('Saved','ok');go('bookings');}).catch(function(e){toast(errMsg(e),'err');});}
+          else{api('createBooking',{projectId:S.projectId,customerName:n,inventoryType:$('#bT',root).value,amount:Number($('#bA',root).value)||0,bookingDate:$('#bD',root).value,customerPhone:$('#bP',root).value.trim()}).then(function(){invalidateTx();closeSheet();toast('Saved','ok');go('bookings');}).catch(function(e){toast(errMsg(e),'err');});}};
+        if(bk)$('#bDel',root).onclick=function(){confirmSheet('Delete this booking for '+bk.customerName+'? The linked income entry stays in your ledger; remove it there if needed.',function(){api('deleteBooking',{id:bk.id}).then(function(){toast('Deleted','ok');go('bookings');}).catch(function(e){toast(errMsg(e),'err');});});};
       });
   }
 
@@ -696,8 +738,16 @@
     $('#addI').onclick=function(){openInvoiceSheet();};
     api('listInvoices',{projectId:S.projectId}).then(function(d){if(!alive(mySeq))return;var el=$('#invList');
       el.innerHTML=d.invoices.length?d.invoices.map(function(inv){return '<div class="item" data-inv=\''+esc(JSON.stringify(inv))+'\'><div class="av">'+I('doc')+'</div><div class="meta"><div class="t">'+esc(inv.number)+' · '+esc(inv.customerName)+'</div><div class="s">'+fmtDate(inv.date)+'</div></div><div class="amt">'+money(inv.total)+'</div></div>';}).join(''):'<div class="empty"><div class="ei">'+I('doc')+'</div><h3>No invoices yet</h3></div>';
-      $all('.item[data-inv]',el).forEach(function(row){row.onclick=function(){invoicePdf(JSON.parse(row.getAttribute('data-inv')));};});
+      $all('.item[data-inv]',el).forEach(function(row){row.onclick=function(){openInvoiceActions(JSON.parse(row.getAttribute('data-inv')));};});
     }).catch(function(e){toast(errMsg(e),'err');});
+  }
+  function openInvoiceActions(inv){
+    openSheet('Invoice '+(inv.number||''),'<p class="muted" style="margin:0 0 14px">'+esc(inv.customerName||'')+' · '+money(inv.total)+' · '+fmtDate(inv.date)+'</p>'+
+      '<button class="btn btn-primary btn-block" id="ivPdf">'+I('download')+' Download PDF</button>'+
+      '<button class="btn btn-danger btn-block" id="ivDel" style="margin-top:10px">'+I('trash')+' Delete invoice</button>',function(root){
+        $('#ivPdf',root).onclick=function(){invoicePdf(inv);};
+        $('#ivDel',root).onclick=function(){confirmSheet('Delete invoice '+(inv.number||'')+'?',function(){api('deleteInvoice',{id:inv.id}).then(function(){toast('Deleted','ok');go('invoices');}).catch(function(e){toast(errMsg(e),'err');});});};
+      });
   }
   function openInvoiceSheet(){
     openSheet('New invoice','<div class="field"><label>Customer</label><input id="iN" placeholder="Mr. Patil"/></div><div id="items"></div><button class="btn btn-ghost btn-sm" id="addItem" style="margin:4px 0 14px">'+I('plus')+' Add line</button><button class="btn btn-primary btn-block" id="iS">'+I('download')+' Create &amp; download PDF</button>',function(root){
@@ -739,7 +789,7 @@
       el.innerHTML=d.gstInvoices.map(function(g){return '<div class="item" style="cursor:default"><input type="checkbox" data-sel="'+g.id+'" style="width:18px;height:18px;flex:none"/><div class="meta"><div class="t">'+esc(g.number||g.fileName)+'</div><div class="s">'+fmtDate(g.date)+(Number(g.amount)>0?' · '+money(g.amount):'')+'</div></div><button class="btn btn-sm btn-ghost" data-view="'+g.id+'">View</button><button class="btn-icon btn-sm" data-del="'+g.id+'" style="margin-left:6px">'+I('trash')+'</button></div>';}).join('');
       $all('[data-sel]',el).forEach(function(c){c.onchange=function(){selected[c.getAttribute('data-sel')]=c.checked;};});
       $all('[data-view]',el).forEach(function(b){b.onclick=function(){viewGstFile(b.getAttribute('data-view'));};});
-      $all('[data-del]',el).forEach(function(b){b.onclick=function(){api('deleteGstInvoice',{id:b.getAttribute('data-del')}).then(function(){go('gst');toast('Deleted','ok');});};});
+      $all('[data-del]',el).forEach(function(b){b.onclick=function(){confirmSheet('Delete this GST invoice and its file?',function(){api('deleteGstInvoice',{id:b.getAttribute('data-del')}).then(function(){go('gst');toast('Deleted','ok');});});};});
     }).catch(function(e){toast(errMsg(e),'err');});
   }
   function openGstUpload(){
@@ -772,6 +822,8 @@
   function viewSettings(v){
     var p=curProject();
     v.innerHTML=pageHead('Settings',p.name||'')+
+      '<div class="card"><div class="card-h"><h3>Appearance</h3></div>'+
+        '<div class="seg theme-seg" id="themeSeg"><button data-t="light">Light</button><button data-t="dark">Dark</button></div></div>'+
       '<div class="card"><div class="card-h"><h3>Project</h3><button class="btn btn-ghost btn-sm" id="newProj">'+I('plus')+' New</button></div>'+
         (S.projectId?'<div class="field"><label>Name</label><input id="pName" value="'+esc(p.name||'')+'"/></div>'+
         '<div class="field"><label>Land cost ('+BK.brand.currency.symbol+', one-time)</label><input id="pLand" type="number" value="'+(p.landCost||0)+'"/></div>'+
@@ -793,6 +845,7 @@
         '<button class="btn btn-danger" id="lo">'+I('logout')+' Log out</button></div>';
     if(S.projectId)$('#pSave').onclick=function(){api('updateProject',{id:S.projectId,name:$('#pName').value.trim(),landCost:Number($('#pLand').value)||0}).then(function(d){S.projects=S.projects.map(function(x){return x.id===d.project.id?d.project:x;});toast('Saved','ok');syncProjSel();}).catch(function(e){toast(errMsg(e),'err');});};
     $('#newProj').onclick=openProjectSheet;
+    (function(){var seg=$('#themeSeg');function paint(){$all('button',seg).forEach(function(b){b.classList.toggle('on',b.getAttribute('data-t')===getTheme());});}paint();seg.addEventListener('click',function(e){var b=e.target.closest('button');if(!b)return;applyTheme(b.getAttribute('data-t'));paint();});})();
     $('#langSel').onchange=function(){try{localStorage.setItem('bk_lang',this.value);}catch(e){}toast('Voice language set','ok');};
     $all('[data-add]').forEach(function(b){b.onclick=function(){addLookupPrompt(b.getAttribute('data-add'),null);};});
     $('#rEnable').onclick=function(){api('configureDailyReport',{enabled:true,email:$('#rEmail').value.trim(),hour:Number($('#rHour').value)}).then(function(){toast('Daily report enabled','ok');}).catch(function(e){toast(errMsg(e),'err');});};
@@ -878,6 +931,7 @@
 
   /* ======================= START ======================= */
   function start(){
+    applyTheme(getTheme());
     if(BK.api.isAuthed()&&BK.apiBase()){
       api('me',{}).then(function(u){S.user={email:u.email,role:u.role};boot();}).catch(function(e){renderAuth(e.code==='UNAUTHORIZED'?'Please sign in.':'');});
     }else{renderAuth('');}
