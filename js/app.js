@@ -60,7 +60,20 @@
     ['gst','GST invoices','folder'],['reminders','Reminders','bell']];
 
   /* ======================= AUTH ======================= */
-  var authState={email:''};
+  var authState={email:'',category:'builder'};
+  // Per-category customization: the data model and endpoints are identical; only these
+  // labels (and the server-seeded vendor/expense lists) differ per business type.
+  var PROFILES={
+    builder:{label:'Contractor / Builder',icon:'building',noun:'Project',nounPlural:'Projects',cost:'Land cost',blurb:'Sites, materials, labour and bookings.'},
+    architect:{label:'Architect',icon:'compass',noun:'Project',nounPlural:'Projects',cost:'Land cost',blurb:'Fees, consultants and design projects.'},
+    farmer:{label:'Farmer',icon:'leaf',noun:'Farm',nounPlural:'Farms',cost:'Setup cost',blurb:'Seeds, inputs, labour and crop income.'},
+    smallbiz:{label:'Small business',icon:'store',noun:'Store',nounPlural:'Stores',cost:'Setup cost',blurb:'Suppliers, expenses and daily sales.'},
+    influencer:{label:'Influencer / Creator',icon:'agent',noun:'Channel',nounPlural:'Channels',cost:'Setup cost',blurb:'Brand deals, gear, editors and payouts.'}
+  };
+  function profile(){return PROFILES[(S.user&&S.user.category)||'builder']||PROFILES.builder;}
+  function pw1(){return profile().noun;}
+  function pwN(){return profile().nounPlural;}
+  function cw(){return profile().cost;}
   function pwError(pw){pw=String(pw||'');if(pw.length<8)return 'Password must be at least 8 characters.';if(!/[a-zA-Z]/.test(pw)||!/[0-9]/.test(pw))return 'Password needs at least one letter and one number.';return '';}
   function waValid(s){var d=String(s||'').replace(/\D/g,'');return d.length>=8&&d.length<=15;}
   function renderAuth(msg){authView('login',{msg:msg});}
@@ -72,8 +85,12 @@
     var err=data.msg?'<div class="auth-err">'+esc(data.msg)+'</div>':'';
     var ok=data.ok?'<div class="auth-ok">'+esc(data.ok)+'</div>':'';
     if(view==='register'){
-      authShell(brand+'<h1>Create your account</h1><p class="sub">Start your builder\'s ledger. New accounts are reviewed before access.</p>'+err+
-        '<form id="rf"><div class="field"><label>Name</label><input id="rName" autocomplete="name" placeholder="Your name"/></div>'+
+      var cats=['builder','architect','farmer','smallbiz','influencer'];
+      authShell(brand+'<h1>Create your account</h1><p class="sub">Start your ledger. New accounts are reviewed before access.</p>'+err+
+        '<form id="rf"><div class="field"><label>What do you do?</label><div class="cat-grid" id="catGrid">'+
+        cats.map(function(c){var pr=PROFILES[c];return '<button type="button" class="cat-opt'+(authState.category===c?' on':'')+'" data-cat="'+c+'"><span class="cat-ic">'+I(pr.icon)+'</span><span class="cat-tx"><b>'+esc(pr.label)+'</b><em>'+esc(pr.blurb)+'</em></span></button>';}).join('')+
+        '</div></div>'+
+        '<div class="field"><label>Name</label><input id="rName" autocomplete="name" placeholder="Your name"/></div>'+
         '<div class="field"><label>Email</label><input id="rEmail" type="email" autocomplete="email" required value="'+esc(authState.email)+'"/></div>'+
         '<div class="field"><label>WhatsApp number</label><input id="rWa" type="tel" autocomplete="tel" inputmode="tel" placeholder="+91 98765 43210"/><span class="field-hint">With country code. Used to send invoices and reports on WhatsApp.</span></div>'+
         '<div class="field"><label>Password</label><div class="pass-wrap"><input id="rPass" type="password" autocomplete="new-password" required placeholder="At least 8 characters"/><button type="button" class="pass-eye" id="rEye">'+I('eye')+'</button></div><span class="field-hint" id="rHint">Use at least 8 characters with a letter and a number.</span></div>'+
@@ -82,6 +99,7 @@
         '<p class="auth-switch">Already have an account? <a href="#" id="toLogin">Sign in</a></p>'+
         '<p class="muted" style="font-size:12px;margin-top:8px">By continuing you agree to our <a href="terms.html">Terms</a> and <a href="privacy.html">Privacy</a>.</p>');
       bindEye('rEye','rPass');bindEye('rEye2','rPass2');
+      $all('#catGrid .cat-opt').forEach(function(btn){btn.onclick=function(){authState.category=btn.getAttribute('data-cat');$all('#catGrid .cat-opt').forEach(function(x){x.classList.toggle('on',x===btn);});};});
       $('#toLogin').onclick=function(e){e.preventDefault();authView('login',{});};
       $('#rf').addEventListener('submit',function(e){e.preventDefault();
         var pw=$('#rPass').value,pw2=$('#rPass2').value,wa=$('#rWa').value.trim();
@@ -89,7 +107,9 @@
         if(pw!==pw2){authView('register',{msg:'Passwords do not match. Please re-enter.'});return;}
         if(wa&&!waValid(wa)){authView('register',{msg:'Enter a valid WhatsApp number with country code.'});return;}
         var b=$('#rBtn');b.disabled=true;b.innerHTML='<span class="spin"></span>';authState.email=$('#rEmail').value.trim();
-        api('register',{name:$('#rName').value.trim(),email:authState.email,whatsapp:wa,password:pw}).then(function(){authView('otp',{ok:'Code sent. Check your inbox.'});}).catch(function(e2){authView('register',{msg:errMsg(e2)});});});
+        api('register',{name:$('#rName').value.trim(),email:authState.email,whatsapp:wa,category:authState.category,password:pw}).then(function(){authView('otp',{ok:'Code sent. Check your inbox.'});}).catch(function(e2){
+          if(e2&&e2.code==='EXISTS'){authView('login',{msg:'This email is already registered. Please sign in.'});return;}
+          authView('register',{msg:errMsg(e2)});});});
     } else if(view==='otp'){
       authShell(brand+'<h1>Verify your email</h1><p class="sub">We sent a 6-digit code to <b>'+esc(authState.email)+'</b>.</p>'+err+ok+
         '<form id="of"><div class="field"><label>Verification code</label><input id="oCode" inputmode="numeric" maxlength="6" placeholder="000000" style="letter-spacing:8px;text-align:center;font-size:22px;font-weight:700"/></div>'+
@@ -265,7 +285,7 @@
   function syncProjSel(){
     [$('#projSel'),$('#projSelM')].forEach(function(sel){
       if(!sel)return;
-      sel.innerHTML=S.projects.map(function(p){return '<option value="'+p.id+'"'+(p.id===S.projectId?' selected':'')+'>'+esc(p.name)+(p.status==='archived'?' (archived)':'')+'</option>';}).join('')+'<option value="__new">+ New project</option>';
+      sel.innerHTML=S.projects.map(function(p){return '<option value="'+p.id+'"'+(p.id===S.projectId?' selected':'')+'>'+esc(p.name)+(p.status==='archived'?' (archived)':'')+'</option>';}).join('')+'<option value="__new">+ New '+pw1()+'</option>';
       sel.onchange=function(){if(sel.value==='__new'){sel.value=S.projectId||'';return openProjectSheet();}setProjId(sel.value);invalidateTx();loadLookups().then(function(){go(S.route);});};
     });
   }
@@ -285,7 +305,7 @@
     root.innerHTML='<div class="view" id="viewInner"></div>';
     (VIEWS[route]||viewDashboard)($('#viewInner'),seq);
   }
-  function noProject(){return '<div class="view"><div class="empty"><div class="ei">'+I('building')+'</div><h3>Create your first project</h3><p>Every entry belongs to a project (a site). Add one to begin.</p><button class="btn btn-primary" id="npBtn" style="margin-top:14px">'+I('plus')+' New project</button></div></div>';}
+  function noProject(){return '<div class="view"><div class="empty"><div class="ei">'+I(profile().icon)+'</div><h3>Create your first '+pw1().toLowerCase()+'</h3><p>Every entry belongs to a '+pw1().toLowerCase()+'. Add one to begin.</p><button class="btn btn-primary" id="npBtn" style="margin-top:14px">'+I('plus')+' New '+pw1()+'</button></div></div>';}
   function pageHead(title,sub,actions){return '<div class="page-h"><div><h1>'+esc(title)+'</h1>'+(sub?'<div class="page-sub">'+esc(sub)+'</div>':'')+'</div>'+(actions?'<div class="page-actions">'+actions+'</div>':'')+'</div>';}
 
   /* ======================= DASHBOARD (client-side) ======================= */
@@ -855,24 +875,35 @@
   }
   function openInvoiceActions(inv){
     openSheet('Invoice '+(inv.number||''),'<p class="muted" style="margin:0 0 14px">'+esc(inv.customerName||'')+' · '+money(inv.total)+' · '+fmtDate(inv.date)+'</p>'+
-      '<button class="btn btn-primary btn-block" id="ivPdf">'+I('download')+' Download PDF</button>'+
+      '<button class="btn btn-primary btn-block" id="ivSend">'+I('whatsapp')+' Send on WhatsApp &amp; email</button>'+
+      '<button class="btn btn-ghost btn-block" id="ivPdf" style="margin-top:10px">'+I('download')+' Download PDF</button>'+
       '<button class="btn btn-danger btn-block" id="ivDel" style="margin-top:10px">'+I('trash')+' Delete invoice</button>',function(root){
+        $('#ivSend',root).onclick=function(){closeSheet();openInvoiceSend(inv);};
         $('#ivPdf',root).onclick=function(){invoicePdf(inv);};
         $('#ivDel',root).onclick=function(){confirmSheet('Delete invoice '+(inv.number||'')+'?',function(){api('deleteInvoice',{id:inv.id}).then(function(){toast('Deleted','ok');go('invoices');}).catch(function(e){toast(errMsg(e),'err');});});};
       });
   }
   function openInvoiceSheet(){
-    openSheet('New invoice','<div class="field"><label>Customer</label><input id="iN" placeholder="Mr. Patil"/></div><div id="items"></div><button class="btn btn-ghost btn-sm" id="addItem" style="margin:4px 0 14px">'+I('plus')+' Add line</button><button class="btn btn-primary btn-block" id="iS">'+I('download')+' Create &amp; download PDF</button>',function(root){
+    openSheet('New invoice',
+      '<div class="field"><label>From booking (optional)</label><select id="iBk"><option value="">New customer</option></select><span class="field-hint">Pick a booking to fill the customer name and WhatsApp number.</span></div>'+
+      '<div class="field"><label>Customer</label><input id="iN" placeholder="Mr. Patil"/></div>'+
+      '<div class="row2"><div class="field"><label>WhatsApp number</label><input id="iWa" type="tel" inputmode="tel" placeholder="+91 98765 43210"/></div>'+
+      '<div class="field"><label>Email</label><input id="iEm" type="email" placeholder="customer@example.com"/></div></div>'+
+      '<div id="items"></div><button class="btn btn-ghost btn-sm" id="addItem" style="margin:4px 0 14px">'+I('plus')+' Add line</button><button class="btn btn-primary btn-block" id="iS">'+I('download')+' Create &amp; download PDF</button>',function(root){
+      var bkMap={};
+      api('listBookings',{projectId:S.projectId}).then(function(d){if(!d.bookings)return;var sel=$('#iBk',root);d.bookings.forEach(function(bk){bkMap[bk.id]=bk;sel.appendChild(h('<option value="'+esc(bk.id)+'">'+esc(bk.customerName)+(bk.customerPhone?' · '+esc(bk.customerPhone):'')+'</option>'));});}).catch(function(){});
+      $('#iBk',root).onchange=function(){var bk=bkMap[this.value];if(!bk)return;$('#iN',root).value=bk.customerName||'';$('#iWa',root).value=bk.customerPhone||'';};
       function addItem(){root.querySelector('#items').appendChild(h('<div class="row2" style="gap:8px;margin-bottom:8px"><input placeholder="Description" class="it-d"/><div style="display:flex;gap:6px"><input type="number" placeholder="Qty" class="it-q" style="width:62px"/><input type="number" placeholder="Rate" class="it-r" style="flex:1"/></div></div>'));}
       addItem();$('#addItem',root).onclick=addItem;
       $('#iS',root).onclick=function(){var name=$('#iN',root).value.trim();if(!name){toast('Enter customer');return;}
+        var wa=$('#iWa',root).value.trim();if(wa&&!waValid(wa)){toast('Enter a valid WhatsApp number with country code','err');return;}
         var items=$all('#items .row2',root).map(function(r){var q=Number($('.it-q',r).value)||0,rate=Number($('.it-r',r).value)||0;return{desc:$('.it-d',r).value.trim(),qty:q,rate:rate,amount:q*rate};}).filter(function(it){return it.desc&&it.amount;});
         if(!items.length){toast('Add at least one line');return;}
-        api('createInvoice',{projectId:S.projectId,customerName:name,date:todayStr(),items:items}).then(function(d){closeSheet();toast('Invoice created','ok');invoicePdf(d.invoice);go('invoices');}).catch(function(e){toast(errMsg(e),'err');});};
+        var bkId=$('#iBk',root).value||'';
+        api('createInvoice',{projectId:S.projectId,customerName:name,customerPhone:wa,customerEmail:$('#iEm',root).value.trim(),bookingId:bkId,date:todayStr(),items:items}).then(function(d){closeSheet();toast('Invoice created','ok');invoicePdf(d.invoice);go('invoices');}).catch(function(e){toast(errMsg(e),'err');});};
     });
   }
-  function invoicePdf(inv){
-    if(!window.jspdf){toast('PDF engine still loading');return;}
+  function buildInvoiceDoc(inv){
     var items;try{items=typeof inv.items==='string'?JSON.parse(inv.items):(inv.items||[]);}catch(e){items=[];}
     var proj=curProject().name||'Project';var sym=BK.brand.currency.symbol;
     var doc=new window.jspdf.jsPDF();
@@ -884,7 +915,40 @@
     items.forEach(function(it){doc.text(String(it.desc||''),14,y);doc.text(String(it.qty||''),120,y);doc.text(String(it.rate||''),140,y);doc.text(sym+Math.round(it.amount||0),196,y,{align:'right'});y+=8;});
     y+=2;doc.line(14,y,196,y);y+=10;doc.setFont(undefined,'bold');doc.setFontSize(13);
     doc.text('Total  '+sym+Math.round(inv.total||0).toLocaleString('en-IN'),196,y,{align:'right'});
-    doc.save((inv.number||'invoice')+'.pdf');
+    return doc;
+  }
+  function invoicePdf(inv){
+    if(!window.jspdf){toast('PDF engine still loading');return;}
+    buildInvoiceDoc(inv).save((inv.number||'invoice')+'.pdf');
+  }
+  // One-click send: WhatsApp (opens chat with summary) + email (PDF attached) + downloads the PDF.
+  function openInvoiceSend(inv){
+    openSheet('Send invoice '+(inv.number||''),
+      '<p class="muted" style="margin:0 0 14px">WhatsApp opens a chat with the invoice details. Email attaches the PDF. The PDF also downloads so you can attach it in WhatsApp.</p>'+
+      '<div class="field"><label>Customer WhatsApp number</label><input id="snWa" type="tel" inputmode="tel" placeholder="+91 98765 43210" value="'+esc(inv.customerPhone||'')+'"/></div>'+
+      '<div class="field"><label>Customer email</label><input id="snEm" type="email" placeholder="customer@example.com" value="'+esc(inv.customerEmail||'')+'"/></div>'+
+      '<button class="btn btn-primary btn-block" id="snGo">'+I('whatsapp')+' Send on WhatsApp &amp; email</button>',function(root){
+        $('#snGo',root).onclick=function(){
+          var wa=$('#snWa',root).value.trim(),em=$('#snEm',root).value.trim();
+          if(!wa&&!em){toast('Enter a WhatsApp number or an email','err');return;}
+          if(wa&&!waValid(wa)){toast('Enter a valid WhatsApp number with country code','err');return;}
+          var proj=curProject().name||'';var sym=BK.brand.currency.symbol;
+          var total=sym+Math.round(inv.total||0).toLocaleString('en-IN');
+          // Open WhatsApp synchronously (popup blockers allow it only inside the click).
+          if(wa){
+            var msg='Invoice '+(inv.number||'')+(proj?' - '+proj:'')+'\nCustomer: '+(inv.customerName||'')+'\nAmount: '+total+'\nDate: '+(inv.date||'')+(em?'\n\nA PDF copy has been emailed to you.':'');
+            window.open('https://wa.me/'+wa.replace(/\D/g,'')+'?text='+encodeURIComponent(msg),'_blank');
+          }
+          // Always give them the PDF to attach.
+          if(window.jspdf)invoicePdf(inv);
+          if(em){
+            var b64='';try{b64=buildInvoiceDoc(inv).output('datauristring').split(',')[1];}catch(e){}
+            api('emailInvoice',{id:inv.id,to:em,pdfBase64:b64,currencySymbol:sym}).then(function(){toast('Invoice emailed to '+em,'ok');}).catch(function(e){toast(errMsg(e),'err');});
+          }
+          closeSheet();
+          if(wa&&!em)toast('WhatsApp opened. Attach the downloaded PDF.','ok');
+        };
+      });
   }
 
   /* ======================= GST VAULT (multi-upload) ======================= */
@@ -936,10 +1000,10 @@
     v.innerHTML=pageHead('Settings',p.name||'')+
       '<div class="card"><div class="card-h"><h3>Appearance</h3></div>'+
         '<div class="seg theme-seg" id="themeSeg"><button data-t="light">Light</button><button data-t="dark">Dark</button></div></div>'+
-      '<div class="card"><div class="card-h"><h3>Project</h3><button class="btn btn-ghost btn-sm" id="newProj">'+I('plus')+' New</button></div>'+
+      '<div class="card"><div class="card-h"><h3>'+pw1()+'</h3><button class="btn btn-ghost btn-sm" id="newProj">'+I('plus')+' New</button></div>'+
         (S.projectId?'<div class="field"><label>Name</label><input id="pName" value="'+esc(p.name||'')+'"/></div>'+
-        '<div class="field"><label>Land cost ('+BK.brand.currency.symbol+', one-time)</label><input id="pLand" type="number" value="'+(p.landCost||0)+'"/></div>'+
-        '<button class="btn btn-primary" id="pSave">'+I('check')+' Save project</button>':'<p class="muted">Create a project to begin.</p>')+'</div>'+
+        '<div class="field"><label>'+cw()+' ('+BK.brand.currency.symbol+', one-time)</label><input id="pLand" type="number" value="'+(p.landCost||0)+'"/></div>'+
+        '<button class="btn btn-primary" id="pSave">'+I('check')+' Save '+pw1().toLowerCase()+'</button>':'<p class="muted">Create a '+pw1().toLowerCase()+' to begin.</p>')+'</div>'+
       '<div class="card"><div class="card-h"><h3>Categories</h3><span class="sub">Add your own types</span></div>'+
         '<div class="row2"><button class="btn btn-ghost btn-sm" data-add="VENDOR_TYPE">'+I('plus')+' Vendor type</button><button class="btn btn-ghost btn-sm" data-add="SALARY_ROLE">'+I('plus')+' Salary role</button></div>'+
         '<div class="row2" style="margin-top:8px"><button class="btn btn-ghost btn-sm" data-add="INVENTORY_TYPE">'+I('plus')+' Unit type</button><button class="btn btn-ghost btn-sm" data-add="MISC_TYPE">'+I('plus')+' Misc type</button></div></div>'+
@@ -983,7 +1047,7 @@
     $('#lo').onclick=logout;
   }
   function openProjectSheet(){
-    openSheet('New project','<div class="field"><label>Project / site name</label><input id="npN" placeholder="Riverside Towers"/></div><div class="field"><label>Land cost (optional)</label><input id="npL" type="number"/></div><button class="btn btn-primary btn-block" id="npS">Create project</button>',function(root){
+    openSheet('New '+pw1(),'<div class="field"><label>'+pw1()+' name</label><input id="npN" placeholder="'+esc(pw1())+' name"/></div><div class="field"><label>'+cw()+' (optional)</label><input id="npL" type="number"/></div><button class="btn btn-primary btn-block" id="npS">Create '+pw1()+'</button>',function(root){
       $('#npS',root).onclick=function(){var n=$('#npN',root).value.trim();if(!n){toast('Enter a name');return;}
         api('createProject',{name:n,landCost:Number($('#npL',root).value)||0}).then(function(d){S.projects.push(d.project);setProjId(d.project.id);invalidateTx();closeSheet();toast('Created','ok');loadLookups().then(function(){go('dashboard');});}).catch(function(e){toast(errMsg(e),'err');});};
     });
@@ -1024,7 +1088,7 @@
     line('Income (period)',s.period.income,[31,157,107]);line('Expense (period)',s.period.expense,[220,91,87]);line('Net (period)',s.period.net);
     y+=4;doc.setFontSize(11);doc.setTextColor(120);doc.text('Expense by category',14,y);doc.setTextColor(0);y+=8;
     Object.keys(s.period.byCategory).forEach(function(k){line('  '+prettyCat(k),s.period.byCategory[k]);});
-    y+=4;doc.line(14,y,196,y);y+=10;line('Land cost',s.totals.landCost);
+    y+=4;doc.line(14,y,196,y);y+=10;line(cw(),s.totals.landCost);
     doc.setFont(undefined,'bold');line('Profit (lifetime)  '+Math.round(s.totals.profitRatio*100)+'%',s.totals.profit);
     doc.save('buildkhata-report.pdf');
   }
@@ -1079,8 +1143,8 @@
   function start(){
     applyTheme(getTheme());
     if(BK.api.isAuthed()&&BK.apiBase()){
-      api('me',{}).then(function(u){S.user={email:u.email,role:u.role,name:u.name||'',whatsapp:u.whatsapp||''};boot();}).catch(function(e){renderAuth(e.code==='UNAUTHORIZED'?'Please sign in.':'');});
-    }else{renderAuth('');}
+      api('me',{}).then(function(u){S.user={email:u.email,role:u.role,name:u.name||'',whatsapp:u.whatsapp||'',category:u.category||'builder'};boot();}).catch(function(e){renderAuth(e.code==='UNAUTHORIZED'?'Please sign in.':'');});
+    }else if(/[?&#]signup/.test(location.search+location.hash)){authView('register',{});}else{renderAuth('');}
     if('serviceWorker'in navigator)navigator.serviceWorker.register('sw.js').catch(function(){});
   }
   start();
