@@ -61,6 +61,8 @@
 
   /* ======================= AUTH ======================= */
   var authState={email:''};
+  function pwError(pw){pw=String(pw||'');if(pw.length<8)return 'Password must be at least 8 characters.';if(!/[a-zA-Z]/.test(pw)||!/[0-9]/.test(pw))return 'Password needs at least one letter and one number.';return '';}
+  function waValid(s){var d=String(s||'').replace(/\D/g,'');return d.length>=8&&d.length<=15;}
   function renderAuth(msg){authView('login',{msg:msg});}
   function authShell(inner){$('#app').classList.add('hide');var root=$('#auth-root');root.classList.remove('hide');root.innerHTML='';root.appendChild(h('<div class="auth"><div class="auth-card">'+inner+'</div></div>'));}
   function bindEye(btnId,inpId){var b=$('#'+btnId);if(!b)return;b.onclick=function(){var p=$('#'+inpId),sh=p.type==='password';p.type=sh?'text':'password';this.innerHTML=I(sh?'eyeOff':'eye');};}
@@ -73,14 +75,21 @@
       authShell(brand+'<h1>Create your account</h1><p class="sub">Start your builder\'s ledger. New accounts are reviewed before access.</p>'+err+
         '<form id="rf"><div class="field"><label>Name</label><input id="rName" autocomplete="name" placeholder="Your name"/></div>'+
         '<div class="field"><label>Email</label><input id="rEmail" type="email" autocomplete="email" required value="'+esc(authState.email)+'"/></div>'+
-        '<div class="field"><label>Password</label><div class="pass-wrap"><input id="rPass" type="password" autocomplete="new-password" required placeholder="At least 6 characters"/><button type="button" class="pass-eye" id="rEye">'+I('eye')+'</button></div></div>'+
+        '<div class="field"><label>WhatsApp number</label><input id="rWa" type="tel" autocomplete="tel" inputmode="tel" placeholder="+91 98765 43210"/><span class="field-hint">With country code. Used to send invoices and reports on WhatsApp.</span></div>'+
+        '<div class="field"><label>Password</label><div class="pass-wrap"><input id="rPass" type="password" autocomplete="new-password" required placeholder="At least 8 characters"/><button type="button" class="pass-eye" id="rEye">'+I('eye')+'</button></div><span class="field-hint" id="rHint">Use at least 8 characters with a letter and a number.</span></div>'+
+        '<div class="field"><label>Confirm password</label><div class="pass-wrap"><input id="rPass2" type="password" autocomplete="new-password" required placeholder="Re-enter password"/><button type="button" class="pass-eye" id="rEye2">'+I('eye')+'</button></div></div>'+
         '<button class="btn btn-primary btn-block" type="submit" id="rBtn">Create account '+I('chevronRight')+'</button></form>'+
         '<p class="auth-switch">Already have an account? <a href="#" id="toLogin">Sign in</a></p>'+
         '<p class="muted" style="font-size:12px;margin-top:8px">By continuing you agree to our <a href="terms.html">Terms</a> and <a href="privacy.html">Privacy</a>.</p>');
-      bindEye('rEye','rPass');
+      bindEye('rEye','rPass');bindEye('rEye2','rPass2');
       $('#toLogin').onclick=function(e){e.preventDefault();authView('login',{});};
-      $('#rf').addEventListener('submit',function(e){e.preventDefault();var b=$('#rBtn');b.disabled=true;b.innerHTML='<span class="spin"></span>';authState.email=$('#rEmail').value.trim();
-        api('register',{name:$('#rName').value.trim(),email:authState.email,password:$('#rPass').value}).then(function(){authView('otp',{ok:'Code sent. Check your inbox.'});}).catch(function(e2){authView('register',{msg:errMsg(e2)});});});
+      $('#rf').addEventListener('submit',function(e){e.preventDefault();
+        var pw=$('#rPass').value,pw2=$('#rPass2').value,wa=$('#rWa').value.trim();
+        var perr=pwError(pw);if(perr){authView('register',{msg:perr});return;}
+        if(pw!==pw2){authView('register',{msg:'Passwords do not match. Please re-enter.'});return;}
+        if(wa&&!waValid(wa)){authView('register',{msg:'Enter a valid WhatsApp number with country code.'});return;}
+        var b=$('#rBtn');b.disabled=true;b.innerHTML='<span class="spin"></span>';authState.email=$('#rEmail').value.trim();
+        api('register',{name:$('#rName').value.trim(),email:authState.email,whatsapp:wa,password:pw}).then(function(){authView('otp',{ok:'Code sent. Check your inbox.'});}).catch(function(e2){authView('register',{msg:errMsg(e2)});});});
     } else if(view==='otp'){
       authShell(brand+'<h1>Verify your email</h1><p class="sub">We sent a 6-digit code to <b>'+esc(authState.email)+'</b>.</p>'+err+ok+
         '<form id="of"><div class="field"><label>Verification code</label><input id="oCode" inputmode="numeric" maxlength="6" placeholder="000000" style="letter-spacing:8px;text-align:center;font-size:22px;font-weight:700"/></div>'+
@@ -944,7 +953,18 @@
         '<div class="field"><label>Send to</label><input id="rEmail" type="email" value="'+esc(S.user?S.user.email:'')+'"/></div>'+
         '<div class="row2"><div class="field"><label>Hour (0-23)</label><input id="rHour" type="number" min="0" max="23" value="20"/></div>'+
         '<div class="field" style="display:flex;align-items:flex-end"><button class="btn btn-primary btn-block" id="rEnable"'+(S.features.email?'':' disabled')+'>Enable</button></div></div></div>'+
-      '<div class="card"><div class="card-h"><h3>Account</h3></div><p class="muted" style="font-size:13.5px;margin-top:-8px">Signed in as <b>'+esc(S.user?S.user.email:'')+'</b></p>'+
+      '<div class="card" id="acctCard"><div class="card-h"><h3>Account</h3><span class="sub">your profile</span></div>'+
+        '<div class="field"><label>Name</label><input id="acName" autocomplete="name" value="'+esc(S.user&&S.user.name||'')+'"/></div>'+
+        '<div class="field"><label>Email</label><input value="'+esc(S.user?S.user.email:'')+'" disabled/><span class="field-hint">Your email cannot be changed.</span></div>'+
+        '<div class="field"><label>WhatsApp number</label><input id="acWa" type="tel" inputmode="tel" placeholder="+91 98765 43210" value="'+esc(S.user&&S.user.whatsapp||'')+'"/><span class="field-hint">With country code. Used to send invoices and reports on WhatsApp.</span></div>'+
+        '<button class="btn btn-primary" id="acSave">Save profile</button>'+
+        '<div class="card-h" style="margin-top:18px"><h3>Change password</h3></div>'+
+        '<div class="field"><label>Current password</label><div class="pass-wrap"><input id="acCur" type="password" autocomplete="current-password"/><button type="button" class="pass-eye" id="acCurEye">'+I('eye')+'</button></div></div>'+
+        '<div class="field"><label>New password</label><div class="pass-wrap"><input id="acNew" type="password" autocomplete="new-password" placeholder="At least 8 characters"/><button type="button" class="pass-eye" id="acNewEye">'+I('eye')+'</button></div><span class="field-hint">Use at least 8 characters with a letter and a number.</span></div>'+
+        '<div class="field"><label>Confirm new password</label><div class="pass-wrap"><input id="acNew2" type="password" autocomplete="new-password"/><button type="button" class="pass-eye" id="acNew2Eye">'+I('eye')+'</button></div></div>'+
+        '<button class="btn btn-ghost" id="acPwSave">Update password</button>'+
+        '<hr style="border:none;border-top:1px solid var(--line);margin:18px 0"/>'+
+        '<p class="muted" style="font-size:13.5px;margin-top:0">Signed in as <b>'+esc(S.user?S.user.email:'')+'</b></p>'+
         '<button class="btn btn-danger" id="lo">'+I('logout')+' Log out</button></div>';
     if(S.projectId)$('#pSave').onclick=function(){api('updateProject',{id:S.projectId,name:$('#pName').value.trim(),landCost:Number($('#pLand').value)||0}).then(function(d){S.projects=S.projects.map(function(x){return x.id===d.project.id?d.project:x;});toast('Saved','ok');syncProjSel();}).catch(function(e){toast(errMsg(e),'err');});};
     $('#newProj').onclick=openProjectSheet;
@@ -952,6 +972,14 @@
     $('#langSel').onchange=function(){try{localStorage.setItem('bk_lang',this.value);}catch(e){}toast('Voice language set','ok');};
     $all('[data-add]').forEach(function(b){b.onclick=function(){addLookupPrompt(b.getAttribute('data-add'),null);};});
     $('#rEnable').onclick=function(){api('configureDailyReport',{enabled:true,email:$('#rEmail').value.trim(),hour:Number($('#rHour').value)}).then(function(){toast('Daily report enabled','ok');}).catch(function(e){toast(errMsg(e),'err');});};
+    bindEye('acCurEye','acCur');bindEye('acNewEye','acNew');bindEye('acNew2Eye','acNew2');
+    $('#acSave').onclick=function(){var wa=$('#acWa').value.trim();if(wa&&!waValid(wa)){toast('Enter a valid WhatsApp number with country code','err');return;}
+      api('updateMe',{name:$('#acName').value.trim(),whatsapp:wa}).then(function(d){S.user.name=d.user.name;S.user.whatsapp=d.user.whatsapp;toast('Profile saved','ok');}).catch(function(e){toast(errMsg(e),'err');});};
+    $('#acPwSave').onclick=function(){var cur=$('#acCur').value,nw=$('#acNew').value,nw2=$('#acNew2').value;
+      if(!cur){toast('Enter your current password','err');return;}
+      var perr=pwError(nw);if(perr){toast(perr,'err');return;}
+      if(nw!==nw2){toast('New passwords do not match','err');return;}
+      api('updateMe',{currentPassword:cur,newPassword:nw}).then(function(){$('#acCur').value='';$('#acNew').value='';$('#acNew2').value='';toast('Password updated','ok');}).catch(function(e){toast(errMsg(e),'err');});};
     $('#lo').onclick=logout;
   }
   function openProjectSheet(){
@@ -1051,7 +1079,7 @@
   function start(){
     applyTheme(getTheme());
     if(BK.api.isAuthed()&&BK.apiBase()){
-      api('me',{}).then(function(u){S.user={email:u.email,role:u.role};boot();}).catch(function(e){renderAuth(e.code==='UNAUTHORIZED'?'Please sign in.':'');});
+      api('me',{}).then(function(u){S.user={email:u.email,role:u.role,name:u.name||'',whatsapp:u.whatsapp||''};boot();}).catch(function(e){renderAuth(e.code==='UNAUTHORIZED'?'Please sign in.':'');});
     }else{renderAuth('');}
     if('serviceWorker'in navigator)navigator.serviceWorker.register('sw.js').catch(function(){});
   }
