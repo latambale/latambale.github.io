@@ -17,7 +17,10 @@
         redirect: 'follow'
       });
     } catch (netErr) {
-      var e2 = new Error('Network error. Please check your connection and try again.'); e2.code = 'NETWORK'; throw e2;
+      var offline = (typeof navigator !== 'undefined' && navigator.onLine === false);
+      var e2 = new Error(offline ? 'You appear to be offline.' : 'Network error. Please check your connection and try again.');
+      e2.code = offline ? 'OFFLINE' : 'NETWORK';
+      throw e2;
     }
     var json;
     try { json = await res.json(); }

@@ -21,7 +21,7 @@
   function toast(msg,type){var el=$('#toast');if(!el)return;var ic=type==='err'?'close':type==='ok'?'check':'bell';
     el.innerHTML=I(ic)+'<span>'+esc(msg)+'</span>';el.className=(type||'')+' show';clearTimeout(toastT);
     toastT=setTimeout(function(){el.className=el.className.replace('show','').trim();},2800);}
-  var ERR_MAP={NETWORK:'Cannot reach the server. Please check your connection.',UNAUTHORIZED:'Please sign in again.',BAD_CREDENTIALS:'Wrong email or password.',WEAK_PASSWORD:'Password must be at least 6 characters.',EXISTS:'An account with this email already exists. Try signing in.',BAD_CODE:'That code is not correct. Please try again.',EXPIRED:'That code has expired. Request a new one.',LOCKED:'Too many attempts. Please wait a little and try again.',NO_OTP:'Please register again to get a new code.',OTP_REQUIRED:'Please verify your email to continue.',PENDING:'Your account is awaiting approval.',SUSPENDED:'Your account has been suspended.',RATE:'Too many requests. Please try again later.',AI_LIMIT:'Daily voice limit reached. Please try again tomorrow.',AI_DISABLED:'Voice is unavailable right now. Please type instead.',EMAIL_DISABLED:'Email is unavailable right now.',R2_DISABLED:'File storage is unavailable right now.',BAD_FILE:'That file type or size is not allowed.',NOT_FOUND:'Not found.'};
+  var ERR_MAP={NETWORK:'Could not reach the server. Please try again in a moment.',OFFLINE:'You are offline. Check your internet and try again.',UNAUTHORIZED:'Please sign in again.',BAD_CREDENTIALS:'Wrong email or password.',WEAK_PASSWORD:'Password must be at least 8 characters with a letter and a number.',EXISTS:'An account with this email already exists. Try signing in.',BAD_CODE:'That code is not correct. Please try again.',EXPIRED:'That code has expired. Request a new one.',LOCKED:'Too many attempts. Please wait a little and try again.',NO_OTP:'Please register again to get a new code.',OTP_REQUIRED:'Please verify your email to continue.',PENDING:'Your account is awaiting approval.',SUSPENDED:'Your account has been suspended.',RATE:'Too many requests. Please try again later.',AI_LIMIT:'Daily voice limit reached. Please try again tomorrow.',AI_DISABLED:'Voice is unavailable right now. Please type instead.',EMAIL_DISABLED:'Email is unavailable right now.',R2_DISABLED:'File storage is unavailable right now.',BAD_FILE:'That file type or size is not allowed.',NOT_FOUND:'Not found.'};
   function errMsg(e){
     var c=e&&e.code,m=(e&&e.message)||'';
     if(c&&ERR_MAP[c])return ERR_MAP[c];
@@ -87,9 +87,9 @@
     if(view==='register'){
       var cats=['builder','architect','farmer','smallbiz','influencer'];
       authShell(brand+'<h1>Create your account</h1><p class="sub">Start your ledger. New accounts are reviewed before access.</p>'+err+
-        '<form id="rf"><div class="field"><label>What do you do?</label><div class="cat-grid" id="catGrid">'+
-        cats.map(function(c){var pr=PROFILES[c];return '<button type="button" class="cat-opt'+(authState.category===c?' on':'')+'" data-cat="'+c+'"><span class="cat-ic">'+I(pr.icon)+'</span><span class="cat-tx"><b>'+esc(pr.label)+'</b><em>'+esc(pr.blurb)+'</em></span></button>';}).join('')+
-        '</div></div>'+
+        '<form id="rf"><div class="field"><label>What do you do?</label><select id="rCat">'+
+        cats.map(function(c){return '<option value="'+c+'"'+(authState.category===c?' selected':'')+'>'+esc(PROFILES[c].label)+'</option>';}).join('')+
+        '</select><span class="field-hint" id="rCatHint">'+esc(PROFILES[authState.category].blurb)+' Your vendors, categories and dashboard are set up for this.</span></div>'+
         '<div class="field"><label>Name</label><input id="rName" autocomplete="name" placeholder="Your name"/></div>'+
         '<div class="field"><label>Email</label><input id="rEmail" type="email" autocomplete="email" required value="'+esc(authState.email)+'"/></div>'+
         '<div class="field"><label>WhatsApp number</label><input id="rWa" type="tel" autocomplete="tel" inputmode="tel" placeholder="+91 98765 43210"/><span class="field-hint">With country code. Used to send invoices and reports on WhatsApp.</span></div>'+
@@ -99,7 +99,7 @@
         '<p class="auth-switch">Already have an account? <a href="#" id="toLogin">Sign in</a></p>'+
         '<p class="muted" style="font-size:12px;margin-top:8px">By continuing you agree to our <a href="terms.html">Terms</a> and <a href="privacy.html">Privacy</a>.</p>');
       bindEye('rEye','rPass');bindEye('rEye2','rPass2');
-      $all('#catGrid .cat-opt').forEach(function(btn){btn.onclick=function(){authState.category=btn.getAttribute('data-cat');$all('#catGrid .cat-opt').forEach(function(x){x.classList.toggle('on',x===btn);});};});
+      $('#rCat').onchange=function(){authState.category=this.value;var hint=$('#rCatHint');if(hint)hint.textContent=PROFILES[this.value].blurb+' Your vendors, categories and dashboard are set up for this.';};
       $('#toLogin').onclick=function(e){e.preventDefault();authView('login',{});};
       $('#rf').addEventListener('submit',function(e){e.preventDefault();
         var pw=$('#rPass').value,pw2=$('#rPass2').value,wa=$('#rWa').value.trim();
@@ -223,7 +223,8 @@
         if(S.projectId)setProjId(S.projectId);
         return S.projectId?loadLookups():null;
       })
-      .then(function(){go(S.route);startNotifications();setTimeout(showCoachmark,900);})
+      .then(function(){go(S.route);startNotifications();
+        if(!S.projects.length){setTimeout(function(){openProjectSheet(true);},500);}else{setTimeout(showCoachmark,900);}})
       .catch(function(err){if(err.code==='UNAUTHORIZED')renderAuth('Session expired. Please sign in.');else toast(errMsg(err),'err');});
   }
   function loadLookups(){return api('listLookups',{projectId:S.projectId}).then(function(d){S.lookups=d.lookups;});}
@@ -498,6 +499,7 @@
     switch(it.intent){
       case 'ADD_TRANSACTION':
         if(!(Number(d.amount)>0))return Promise.reject(new Error('no amount'));
+        if(d.category==='BOOKING')return api('createBooking',{projectId:S.projectId,customerName:d.customerName||d.vendorName||'Customer',inventoryType:d.subCategory||'',amount:Number(d.amount)||0,bookingDate:d.date||todayStr(),note:d.note||'',customerPhone:''});
         return api('createTransaction',{projectId:S.projectId,type:d.type,category:d.category,subCategory:d.subCategory||'',vendorName:d.vendorName||'',amount:Number(d.amount)||0,rate:Number(d.rate)||0,quantity:Number(d.quantity)||0,unit:d.unit||'',date:d.date||todayStr(),note:d.note||'',source:'voice',rawText:''});
       case 'ADD_REMINDER':
         return api('createReminder',{projectId:S.projectId,title:d.title,dueDate:d.dueDate,time:d.time,remindBefore:d.remindBefore,recurrence:d.recurrence,amount:Number(d.amount)||0,notify:true});
@@ -559,7 +561,10 @@
             sub.innerHTML='<label>'+(cat==='SALARY'?'Role':cat==='BOOKING'?'Unit type':'Type')+'</label><select id="cSub">'+opts.map(function(o){return '<option'+(String(sg.subCategory).toLowerCase()===o.toLowerCase()?' selected':'')+'>'+esc(o)+'</option>';}).join('')+'<option value="__new">+ Add new</option></select>';
             $('#cSub',root).onchange=function(){if(this.value==='__new')addLookupPrompt(lk,this);};}
           else sub.innerHTML='';
-          ven.innerHTML=(cat==='VENDOR')?'<label>Vendor name</label><input id="cVen" placeholder="e.g. Sharma Steel" value="'+esc(sg.vendorName||'')+'"/>':'';
+          ven.innerHTML=(cat==='VENDOR')?'<label>Vendor name</label><input id="cVen" placeholder="e.g. Sharma Steel" value="'+esc(sg.vendorName||'')+'"/>':
+            (cat==='BOOKING')?'<label>Customer name</label><input id="cCust" placeholder="e.g. Mr. Patil" value="'+esc(sg.customerName||sg.vendorName||'')+'"/>':'';
+          // A booking is always income (the customer pays you).
+          if(cat==='BOOKING'){var ty=$('#cType',root);if(ty)ty.value='INCOME';}
         }
         $('#cCat',root).onchange=refreshSub;refreshSub();
         $('#saveTx',root).onclick=function(){
@@ -571,8 +576,16 @@
             date:g('cDate').value||todayStr(),note:g('cNote').value.trim(),source:fromAi?'voice':'manual',rawText:rawText||''};
           if(!(payload.amount>0)){toast('Enter an amount','err');return;}
           var btn=g('saveTx');btn.disabled=true;btn.innerHTML='<span class="spin"></span>';
-          api('createTransaction',payload).then(function(){invalidateTx();closeSheet();toast('Saved','ok');chatBot.push('bot','Saved '+(payload.type==='INCOME'?'income':'expense')+' of '+money(payload.amount)+'.');if(S.route==='dashboard'||S.route==='ledger')go(S.route);})
-            .catch(function(e){btn.disabled=false;btn.innerHTML=I('check')+' Save entry';toast(errMsg(e),'err');});
+          var done=function(){invalidateTx();closeSheet();toast('Saved','ok');chatBot.push('bot','Saved '+(payload.type==='INCOME'?'income':'expense')+' of '+money(payload.amount)+'.');if(S.route==='dashboard'||S.route==='ledger'||S.route==='bookings')go(S.route);};
+          var fail=function(e){btn.disabled=false;btn.innerHTML=I('check')+' Save entry';toast(errMsg(e),'err');};
+          if(payload.category==='BOOKING'){
+            // A booking becomes a real Booking record (which also logs the income), so it shows in Bookings.
+            var cust=g('cCust')?g('cCust').value.trim():'';
+            if(!cust){toast('Enter the customer name','err');return;}
+            api('createBooking',{projectId:S.projectId,customerName:cust,inventoryType:payload.subCategory||'',amount:payload.amount,bookingDate:payload.date,note:payload.note,customerPhone:''}).then(done).catch(fail);
+            return;
+          }
+          api('createTransaction',payload).then(done).catch(fail);
         };
       });
   }
@@ -1029,7 +1042,7 @@
         '<button class="btn btn-ghost" id="acPwSave">Update password</button>'+
         '<hr style="border:none;border-top:1px solid var(--line);margin:18px 0"/>'+
         '<p class="muted" style="font-size:13.5px;margin-top:0">Signed in as <b>'+esc(S.user?S.user.email:'')+'</b></p>'+
-        '<button class="btn btn-danger" id="lo">'+I('logout')+' Log out</button></div>';
+        '<button class="btn btn-logout" id="lo">'+I('logout')+' Log out</button></div>';
     if(S.projectId)$('#pSave').onclick=function(){api('updateProject',{id:S.projectId,name:$('#pName').value.trim(),landCost:Number($('#pLand').value)||0}).then(function(d){S.projects=S.projects.map(function(x){return x.id===d.project.id?d.project:x;});toast('Saved','ok');syncProjSel();}).catch(function(e){toast(errMsg(e),'err');});};
     $('#newProj').onclick=openProjectSheet;
     (function(){var seg=$('#themeSeg');function paint(){$all('button',seg).forEach(function(b){b.classList.toggle('on',b.getAttribute('data-t')===getTheme());});}paint();seg.addEventListener('click',function(e){var b=e.target.closest('button');if(!b)return;applyTheme(b.getAttribute('data-t'));paint();});})();
@@ -1046,8 +1059,9 @@
       api('updateMe',{currentPassword:cur,newPassword:nw}).then(function(){$('#acCur').value='';$('#acNew').value='';$('#acNew2').value='';toast('Password updated','ok');}).catch(function(e){toast(errMsg(e),'err');});};
     $('#lo').onclick=logout;
   }
-  function openProjectSheet(){
-    openSheet('New '+pw1(),'<div class="field"><label>'+pw1()+' name</label><input id="npN" placeholder="'+esc(pw1())+' name"/></div><div class="field"><label>'+cw()+' (optional)</label><input id="npL" type="number"/></div><button class="btn btn-primary btn-block" id="npS">Create '+pw1()+'</button>',function(root){
+  function openProjectSheet(firstTime){
+    var intro=firstTime?'<p class="muted" style="margin:-6px 0 14px">Welcome. Create your first '+pw1().toLowerCase()+' to start. You can add more any time from the dropdown at the top.</p>':'';
+    openSheet(firstTime?'Create your first '+pw1():'New '+pw1(),intro+'<div class="field"><label>'+pw1()+' name</label><input id="npN" placeholder="'+esc(pw1())+' name"/></div><div class="field"><label>'+cw()+' (optional)</label><input id="npL" type="number"/></div><button class="btn btn-primary btn-block" id="npS">Create '+pw1()+'</button>',function(root){
       $('#npS',root).onclick=function(){var n=$('#npN',root).value.trim();if(!n){toast('Enter a name');return;}
         api('createProject',{name:n,landCost:Number($('#npL',root).value)||0}).then(function(d){S.projects.push(d.project);setProjId(d.project.id);invalidateTx();closeSheet();toast('Created','ok');loadLookups().then(function(){go('dashboard');});}).catch(function(e){toast(errMsg(e),'err');});};
     });
@@ -1055,10 +1069,11 @@
 
   /* ======================= MORE MENU (mobile) ======================= */
   function openMoreMenu(){
-    var items=[['bookings','home','Bookings'],['vendors','cube','Vendors'],['invoices','doc','Invoices'],['gst','folder','GST invoices'],['settings','settings','Settings']];
-    openSheet('More',items.map(function(it){return '<button class="btn btn-ghost btn-block" data-m="'+it[0]+'" style="justify-content:flex-start;margin-bottom:8px">'+I(it[1])+' '+it[2]+'</button>';}).join('')+
-      '<button class="btn btn-ghost btn-block" id="mHelp" style="justify-content:flex-start;margin-bottom:8px">'+I('help')+' Help &amp; Support</button>'+
-      '<button class="btn btn-danger btn-block" id="mLo" style="margin-top:6px">'+I('logout')+' Log out</button>',function(root){
+    var items=[['bookings','home','Bookings'],['vendors','cube','Vendors'],['invoices','doc','Invoices'],['gst','folder','GST invoices'],['reminders','bell','Reminders'],['settings','settings','Settings']];
+    openSheet('More',
+      '<div class="more-grid">'+items.map(function(it){return '<button class="more-tile" data-m="'+it[0]+'"><span class="mt-ic">'+I(it[1])+'</span><span>'+it[2]+'</span></button>';}).join('')+
+      '<button class="more-tile" id="mHelp"><span class="mt-ic">'+I('help')+'</span><span>Help</span></button></div>'+
+      '<button class="btn btn-logout btn-block" id="mLo" style="margin-top:14px">'+I('logout')+' Log out</button>',function(root){
       $all('[data-m]',root).forEach(function(b){b.onclick=function(){closeSheet();go(b.getAttribute('data-m'));};});
       $('#mHelp',root).onclick=function(){closeSheet();openSupportSheet();};
       $('#mLo',root).onclick=logout;
@@ -1146,6 +1161,15 @@
       api('me',{}).then(function(u){S.user={email:u.email,role:u.role,name:u.name||'',whatsapp:u.whatsapp||'',category:u.category||'builder'};boot();}).catch(function(e){renderAuth(e.code==='UNAUTHORIZED'?'Please sign in.':'');});
     }else if(/[?&#]signup/.test(location.search+location.hash)){authView('register',{});}else{renderAuth('');}
     if('serviceWorker'in navigator)navigator.serviceWorker.register('sw.js').catch(function(){});
+    bindConnBanner();
+  }
+  // A quiet, friendly connectivity banner instead of scary error toasts.
+  function bindConnBanner(){
+    var el;
+    function banner(){if(!el){el=h('<div id="connBanner" class="conn-banner" role="status">You are offline. Changes will not be saved until you reconnect.</div>');document.body.appendChild(el);}return el;}
+    function update(){var off=navigator.onLine===false;banner().classList.toggle('show',off);}
+    window.addEventListener('offline',update);window.addEventListener('online',function(){update();if(S.user)toast('Back online','ok');});
+    update();
   }
   start();
 })();
