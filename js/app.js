@@ -53,37 +53,131 @@
     ['gst','GST invoices','folder'],['reminders','Reminders','bell']];
 
   /* ======================= AUTH ======================= */
-  function renderAuth(msg){
-    $('#app').classList.add('hide');
-    var root=$('#auth-root');root.classList.remove('hide');
-    root.innerHTML='';
-    root.appendChild(h(
-      '<div class="auth"><div class="auth-card">'+
-      '<div class="auth-brand"><img src="assets/icons/icon.svg" alt=""/> BuildKhata</div>'+
-      '<h1>Welcome back</h1><p class="sub">Sign in to your builder\'s ledger.</p>'+
-      (msg?'<div class="auth-err">'+esc(msg)+'</div>':'')+
-      '<form id="lf">'+
-      '<div class="field"><label>Email</label><input id="liEmail" type="email" autocomplete="username" required placeholder="you@example.com"/></div>'+
-      '<div class="field"><label>Password</label><div class="pass-wrap"><input id="liPass" type="password" autocomplete="current-password" required placeholder="Your password"/><button type="button" class="pass-eye" id="liEye" aria-label="Show password">'+I('eye')+'</button></div></div>'+
-      '<button class="btn btn-primary btn-block" type="submit" id="liBtn">Sign in '+I('chevronRight')+'</button>'+
-      '</form>'+
-      '<p class="muted" style="font-size:12.5px;margin-top:18px"><a href="index.html">Back to site</a></p>'+
-      '</div></div>'));
-    $('#liEye').onclick=function(){var p=$('#liPass'),sh=p.type==='password';p.type=sh?'text':'password';this.innerHTML=I(sh?'eyeOff':'eye');};
-    $('#lf').addEventListener('submit',function(e){
-      e.preventDefault();
-      var btn=$('#liBtn');btn.disabled=true;btn.innerHTML='<span class="spin"></span>';
-      BK.api.login($('#liEmail').value.trim(),$('#liPass').value)
-        .then(function(u){S.user=u;boot();})
-        .catch(function(err){renderAuth(err.code==='NETWORK'?'Cannot reach the server. Please try again.':errMsg(err));});
-    });
+  var authState={email:''};
+  function renderAuth(msg){authView('login',{msg:msg});}
+  function authShell(inner){$('#app').classList.add('hide');var root=$('#auth-root');root.classList.remove('hide');root.innerHTML='';root.appendChild(h('<div class="auth"><div class="auth-card">'+inner+'</div></div>'));}
+  function bindEye(btnId,inpId){var b=$('#'+btnId);if(!b)return;b.onclick=function(){var p=$('#'+inpId),sh=p.type==='password';p.type=sh?'text':'password';this.innerHTML=I(sh?'eyeOff':'eye');};}
+  function authView(view,data){
+    data=data||{};
+    var brand='<div class="auth-brand"><img src="assets/icons/icon.svg" alt=""/> BuildKhata</div>';
+    var err=data.msg?'<div class="auth-err">'+esc(data.msg)+'</div>':'';
+    var ok=data.ok?'<div class="auth-ok">'+esc(data.ok)+'</div>':'';
+    if(view==='register'){
+      authShell(brand+'<h1>Create your account</h1><p class="sub">Start your builder\'s ledger. New accounts are reviewed before access.</p>'+err+
+        '<form id="rf"><div class="field"><label>Name</label><input id="rName" autocomplete="name" placeholder="Your name"/></div>'+
+        '<div class="field"><label>Email</label><input id="rEmail" type="email" autocomplete="email" required value="'+esc(authState.email)+'"/></div>'+
+        '<div class="field"><label>Password</label><div class="pass-wrap"><input id="rPass" type="password" autocomplete="new-password" required placeholder="At least 6 characters"/><button type="button" class="pass-eye" id="rEye">'+I('eye')+'</button></div></div>'+
+        '<button class="btn btn-primary btn-block" type="submit" id="rBtn">Create account '+I('chevronRight')+'</button></form>'+
+        '<p class="auth-switch">Already have an account? <a href="#" id="toLogin">Sign in</a></p>'+
+        '<p class="muted" style="font-size:12px;margin-top:8px">By continuing you agree to our <a href="terms.html">Terms</a> and <a href="privacy.html">Privacy</a>.</p>');
+      bindEye('rEye','rPass');
+      $('#toLogin').onclick=function(e){e.preventDefault();authView('login',{});};
+      $('#rf').addEventListener('submit',function(e){e.preventDefault();var b=$('#rBtn');b.disabled=true;b.innerHTML='<span class="spin"></span>';authState.email=$('#rEmail').value.trim();
+        api('register',{name:$('#rName').value.trim(),email:authState.email,password:$('#rPass').value}).then(function(){authView('otp',{ok:'Code sent. Check your inbox.'});}).catch(function(e2){authView('register',{msg:errMsg(e2)});});});
+    } else if(view==='otp'){
+      authShell(brand+'<h1>Verify your email</h1><p class="sub">We sent a 6-digit code to <b>'+esc(authState.email)+'</b>.</p>'+err+ok+
+        '<form id="of"><div class="field"><label>Verification code</label><input id="oCode" inputmode="numeric" maxlength="6" placeholder="000000" style="letter-spacing:8px;text-align:center;font-size:22px;font-weight:700"/></div>'+
+        '<button class="btn btn-primary btn-block" type="submit" id="oBtn">Verify '+I('check')+'</button></form>'+
+        '<p class="auth-switch"><a href="#" id="resend">Resend code</a> &middot; <a href="#" id="toLogin2">Back to sign in</a></p>');
+      $('#of').addEventListener('submit',function(e){e.preventDefault();var b=$('#oBtn');b.disabled=true;b.innerHTML='<span class="spin"></span>';
+        api('verifyOtp',{email:authState.email,code:$('#oCode').value.trim()}).then(function(){authView('pending',{});}).catch(function(e2){authView('otp',{msg:errMsg(e2)});});});
+      $('#resend').onclick=function(e){e.preventDefault();api('resendOtp',{email:authState.email}).then(function(){authView('otp',{ok:'A new code is on its way.'});}).catch(function(e2){authView('otp',{msg:errMsg(e2)});});};
+      $('#toLogin2').onclick=function(e){e.preventDefault();authView('login',{});};
+      setTimeout(function(){var c=$('#oCode');c&&c.focus();},60);
+    } else if(view==='pending'){
+      authShell(brand+'<div style="text-align:center;padding:6px 0"><div class="auth-tick">'+I('check')+'</div>'+
+        '<h1>Almost there</h1><p class="sub">'+esc(data.msg||'Your email is verified. Your account is awaiting approval. We will email you the moment it is active.')+'</p></div>'+
+        '<button class="btn btn-ghost btn-block" id="toLogin3" style="margin-top:8px">Back to sign in</button>');
+      $('#toLogin3').onclick=function(){authView('login',{});};
+    } else {
+      authShell(brand+'<h1>Welcome back</h1><p class="sub">Sign in to your builder\'s ledger.</p>'+err+ok+
+        '<form id="lf"><div class="field"><label>Email</label><input id="liEmail" type="email" autocomplete="username" required value="'+esc(authState.email)+'" placeholder="you@example.com"/></div>'+
+        '<div class="field"><label>Password</label><div class="pass-wrap"><input id="liPass" type="password" autocomplete="current-password" required placeholder="Your password"/><button type="button" class="pass-eye" id="liEye">'+I('eye')+'</button></div></div>'+
+        '<button class="btn btn-primary btn-block" type="submit" id="liBtn">Sign in '+I('chevronRight')+'</button></form>'+
+        '<p class="auth-switch">New here? <a href="#" id="toReg">Create an account</a></p>'+
+        '<p class="muted" style="font-size:12.5px;margin-top:8px"><a href="index.html">Back to site</a></p>');
+      bindEye('liEye','liPass');
+      $('#toReg').onclick=function(e){e.preventDefault();authView('register',{});};
+      $('#lf').addEventListener('submit',function(e){e.preventDefault();var b=$('#liBtn');b.disabled=true;b.innerHTML='<span class="spin"></span>';authState.email=$('#liEmail').value.trim();
+        BK.api.login(authState.email,$('#liPass').value).then(function(u){S.user=u;boot();}).catch(function(err){
+          if(err.code==='OTP_REQUIRED'){authView('otp',{msg:'Please verify your email to continue.'});return;}
+          if(err.code==='PENDING'){authView('pending',{msg:'Your account is awaiting approval. We will email you when it is active.'});return;}
+          if(err.code==='SUSPENDED'){authView('login',{msg:'Your account has been suspended. Contact support.'});return;}
+          authView('login',{msg:err.code==='NETWORK'?'Cannot reach the server. Please try again.':errMsg(err)});});});
+    }
   }
   function logout(){BK.api.logout();S.user=null;location.reload();}
+
+  /* ======================= ADMIN ======================= */
+  function bootAdmin(){
+    applyTheme(getTheme());
+    function nb(id,label,icon){return '<button class="nav-item" data-ago="'+id+'">'+I(icon)+'<span>'+label+'</span></button>';}
+    function tb(id,label,icon){return '<button class="tab" data-ago="'+id+'">'+I(icon)+'<span>'+label+'</span></button>';}
+    $('#app').innerHTML='<div class="shell"><aside class="side">'+
+      '<div class="side-brand"><img src="assets/icons/icon.svg" alt=""/> BuildKhata <span class="admin-tag">admin</span></div>'+
+      '<nav class="nav-group" id="aNav">'+nb('adash','Dashboard','dashboard')+nb('ausers','Users','user')+nb('atickets','Tickets','help')+'</nav>'+
+      '<div class="side-foot"><div class="side-user">'+esc(S.user.email)+'</div>'+
+        '<button class="nav-item" id="themeToggle" data-theme-btn></button>'+
+        '<button class="nav-item" id="logoutBtn">'+I('logout')+'<span>Log out</span></button></div>'+
+      '</aside><div class="main">'+
+      '<div class="topbar"><span class="tb-brand"><img src="assets/icons/icon.svg" alt=""/> Admin</span>'+
+        '<button class="btn-icon" id="themeM" aria-label="Toggle theme" style="margin-left:auto"></button></div>'+
+      '<div class="content"><div id="aView"></div></div>'+
+      '<nav class="tabbar" id="aTab">'+tb('adash','Home','dashboard')+tb('ausers','Users','user')+tb('atickets','Tickets','help')+'</nav>'+
+      '</div></div>';
+    $('#aNav').addEventListener('click',aNavClick);$('#aTab').addEventListener('click',aNavClick);
+    $('#logoutBtn').addEventListener('click',logout);
+    $('#themeToggle').addEventListener('click',function(e){e.stopPropagation();toggleTheme();});
+    $('#themeM').addEventListener('click',toggleTheme);refreshThemeBtns();
+    adminGo('adash');
+  }
+  function aNavClick(e){var b=e.target.closest('[data-ago]');if(b)adminGo(b.getAttribute('data-ago'));}
+  function adminGo(route){
+    $all('[data-ago]').forEach(function(el){el.classList.toggle('active',el.getAttribute('data-ago')===route);});
+    var v=$('#aView');if(!v)return;v.innerHTML='<div class="view" id="aInner"></div>';var root=$('#aInner');
+    (route==='ausers'?adminUsers:route==='atickets'?adminTickets:adminDash)(root);
+  }
+  function aKpi(label,val,cls){return '<div class="kpi '+(cls||'')+'"><div class="kl">'+esc(label)+'</div><div class="kv">'+val+'</div></div>';}
+  function userRow(u){
+    var badge='<span class="st-badge st-'+u.status+'">'+esc(u.status.replace('_',' '))+'</span>';
+    var acts='<div class="u-acts">';
+    if(u.status==='pending'||u.status==='suspended')acts+='<button class="btn btn-sm btn-primary" data-approve="'+u.id+'">'+I('check')+' Approve</button>';
+    if(u.status==='active')acts+='<button class="btn btn-sm btn-danger" data-suspend="'+u.id+'">Suspend</button>';
+    acts+='</div>';
+    return '<div class="item" style="cursor:default"><div class="av">'+I('user')+'</div><div class="meta"><div class="t">'+esc(u.name||u.email)+' '+badge+'</div><div class="s">'+esc(u.email)+' · joined '+fmtDate(u.createdAt)+'</div></div>'+acts+'</div>';
+  }
+  function bindUserActions(el){
+    $all('[data-approve]',el).forEach(function(b){b.onclick=function(){setUserStatus(b.getAttribute('data-approve'),'active');};});
+    $all('[data-suspend]',el).forEach(function(b){b.onclick=function(){confirmSheet('Suspend this user? They will lose access.',function(){setUserStatus(b.getAttribute('data-suspend'),'suspended');});};});
+  }
+  function setUserStatus(userId,status){api('adminSetUserStatus',{userId:userId,status:status}).then(function(){toast(status==='active'?'Approved':'Updated','ok');var a=$('[data-ago].active');adminGo(a?a.getAttribute('data-ago'):'adash');}).catch(function(e){toast(errMsg(e),'err');});}
+  function adminDash(root){
+    root.innerHTML=pageHead('Admin dashboard','Users and activity')+'<div class="kpis" id="aKpis">'+'<div class="skeleton" style="height:84px"></div>'.repeat(4)+'</div>'+
+      '<div class="card" style="margin-top:16px"><div class="card-h"><h3>Awaiting approval</h3></div><div id="aPending"><div class="skeleton" style="height:90px"></div></div></div>';
+    api('adminStats',{}).then(function(d){var s=d.stats;var k=$('#aKpis');if(k)k.innerHTML=aKpi('Total users',s.total)+aKpi('Active',s.active,'pos')+aKpi('Pending',s.pending)+aKpi('Open tickets',s.openTickets);}).catch(function(e){toast(errMsg(e),'err');});
+    api('adminListUsers',{status:'pending'}).then(function(d){var el=$('#aPending');if(!el)return;
+      if(!d.users.length){el.innerHTML='<div class="empty"><div class="ei">'+I('check')+'</div><h3>All caught up</h3><p>No one waiting for approval.</p></div>';return;}
+      el.innerHTML=d.users.map(userRow).join('');bindUserActions(el);}).catch(function(e){toast(errMsg(e),'err');});
+  }
+  var aFilter='';
+  function adminUsers(root){
+    root.innerHTML=pageHead('Users','Manage access')+'<div class="card"><div class="card-h"><span class="seg" id="uFilter">'+
+      ['','pending','active','suspended'].map(function(s){return '<button data-f="'+s+'" class="'+(aFilter===s?'on':'')+'">'+(s||'All')+'</button>';}).join('')+'</span></div><div id="uList"><div class="skeleton" style="height:160px"></div></div></div>';
+    $('#uFilter').addEventListener('click',function(e){var b=e.target.closest('button');if(!b)return;aFilter=b.getAttribute('data-f');adminUsers(root);});
+    api('adminListUsers',{status:aFilter}).then(function(d){var el=$('#uList');if(!el)return;el.innerHTML=d.users.length?d.users.map(userRow).join(''):'<div class="empty"><div class="ei">'+I('user')+'</div><h3>No users</h3></div>';bindUserActions(el);}).catch(function(e){toast(errMsg(e),'err');});
+  }
+  function adminTickets(root){
+    root.innerHTML=pageHead('Support tickets','')+'<div class="card"><div id="tList"><div class="skeleton" style="height:160px"></div></div></div>';
+    api('adminListTickets',{}).then(function(d){var el=$('#tList');if(!el)return;
+      if(!d.tickets.length){el.innerHTML='<div class="empty"><div class="ei">'+I('help')+'</div><h3>No tickets</h3></div>';return;}
+      el.innerHTML=d.tickets.map(function(t){return '<div class="item" style="cursor:default;align-items:flex-start"><div class="av">'+I('mail')+'</div><div class="meta"><div class="t">'+esc(t.subject)+' <span class="muted" style="font-weight:400">· '+esc(t.source)+'</span></div><div class="s">'+esc(t.email)+' · '+fmtDate(t.createdAt)+'</div><p style="margin:6px 0 0;font-size:13px;color:var(--txt-2)">'+esc(t.message)+'</p></div></div>';}).join('');}).catch(function(e){toast(errMsg(e),'err');});
+  }
 
   /* ======================= BOOT ======================= */
   function boot(){
     $('#auth-root').classList.add('hide');
     $('#app').classList.remove('hide');
+    if(S.user&&S.user.role==='admin'){return bootAdmin();}
     renderShell();
     Promise.all([api('getSettings',{}).catch(function(){return{features:{}};}),api('listProjects',{})])
       .then(function(r){
