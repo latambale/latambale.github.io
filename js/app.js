@@ -21,7 +21,14 @@
   function toast(msg,type){var el=$('#toast');if(!el)return;var ic=type==='err'?'close':type==='ok'?'check':'bell';
     el.innerHTML=I(ic)+'<span>'+esc(msg)+'</span>';el.className=(type||'')+' show';clearTimeout(toastT);
     toastT=setTimeout(function(){el.className=el.className.replace('show','').trim();},2800);}
-  function errMsg(e){return (e&&e.message)||'Something went wrong';}
+  var ERR_MAP={NETWORK:'Cannot reach the server. Please check your connection.',UNAUTHORIZED:'Please sign in again.',BAD_CREDENTIALS:'Wrong email or password.',WEAK_PASSWORD:'Password must be at least 6 characters.',EXISTS:'An account with this email already exists. Try signing in.',BAD_CODE:'That code is not correct. Please try again.',EXPIRED:'That code has expired. Request a new one.',LOCKED:'Too many attempts. Please wait a little and try again.',NO_OTP:'Please register again to get a new code.',OTP_REQUIRED:'Please verify your email to continue.',PENDING:'Your account is awaiting approval.',SUSPENDED:'Your account has been suspended.',RATE:'Too many requests. Please try again later.',AI_LIMIT:'Daily voice limit reached. Please try again tomorrow.',AI_DISABLED:'Voice is unavailable right now. Please type instead.',EMAIL_DISABLED:'Email is unavailable right now.',R2_DISABLED:'File storage is unavailable right now.',BAD_FILE:'That file type or size is not allowed.',NOT_FOUND:'Not found.'};
+  function errMsg(e){
+    var c=e&&e.code,m=(e&&e.message)||'';
+    if(c&&ERR_MAP[c])return ERR_MAP[c];
+    // never surface internal/provider errors to users
+    if(/error\s*\d{3}|resend|openai|sql|sqlite|d1\b|r2\b|fetch|undefined|null reference|stack|token|bearer|api key/i.test(m))return 'Something went wrong. Please try again.';
+    return m||'Something went wrong. Please try again.';
+  }
   function todayStr(){var d=new Date();return d.getFullYear()+'-'+p2(d.getMonth()+1)+'-'+p2(d.getDate());}
   function p2(n){return (n<10?'0':'')+n;}
   function fmtDate(d){try{return new Date(String(d).slice(0,10)+'T00:00:00').toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'2-digit'});}catch(e){return d;}}
